@@ -4,7 +4,8 @@ import { NftDressing } from "../target/types/nft_dressing";
 import { Connection, Keypair, PublicKey, Signer, SystemProgram, GetProgramAccountsFilter } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID, Token, ASSOCIATED_TOKEN_PROGRAM_ID, AuthorityType } from "@solana/spl-token";
 import { keypairIdentity, Metaplex, NftWithToken } from "@metaplex-foundation/js";
-import { fetchNFTsInCollection } from "./utils";
+import { fetchNFTsInCollection, getAssociatedTokenAddress } from "./utils";
+
 
 describe("nft-dressing", () => {
   // Configure the client to use the local cluster.
@@ -30,6 +31,8 @@ describe("nft-dressing", () => {
 
   const metaplex = Metaplex.make(connection)
     .use(keypairIdentity(payer));
+
+  const programId = new PublicKey('Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS');
 
   it("Init mints", async () => {     
     await connection.confirmTransaction(
@@ -72,12 +75,51 @@ describe("nft-dressing", () => {
     }))
     console.log(JSON.stringify(traits[0]))
     
-    //NOTE the offset 368 and datasize 679 only counts for these NFTs created. With different creators this value can differ!
-    //const collectionFilter: GetProgramAccountsFilter[] = [{ memcmp: { bytes: traits[0].collection.address.toBase58(), offset: 368 } }, {dataSize: 679 }]
-    //const output = await anchor.getProvider().connection.getProgramAccounts(new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s'), {commitment: 'confirmed', filters: collectionFilter})
     const output = await fetchNFTsInCollection(connection, traits[0].collection.address)
     console.log(`Amount found for: ${output.length}`)
     console.log(`NFT output: ${JSON.stringify(output[0])}`);
+
+  });
+
+
+  it("Transfer trait", async () => {    
+
+    const assembledMint = assemblies[0].address;
+    const assembledMintTokenAccount = await getAssociatedTokenAddress(
+      assembledMint,
+      payer.publicKey
+    );
+    const traitNFT = traits[0];
+    const traitMint = traitNFT.mint.address;
+    const traitMetadata = traitNFT.metadataAddress;
+    const traitCollection = traitNFT.collection.address;
+
+    const [traitPda] = PublicKey.findProgramAddressSync(
+        [
+            Buffer.from(anchor.utils.bytes.utf8.encode('trait')),
+            assembledMint.toBuffer(),
+            traitCollection.toBuffer(),
+        ],
+        programId
+    );
+
+    const tx = await program.methods.applyTrait()
+    .accounts(
+    {
+      traitPda,
+      assembledMint,
+      traitMetadata,
+      traitMint,
+      traitCollection,
+      assembledMintTokenAccount,
+      owner: payer.publicKey,
+    }).transaction();
+
+    tx.feePayer = payer.publicKey;
+
+    console.log(await connection.simulateTransaction(tx));
+    //.rpc();
+    console.log(tx);
 
   });
 

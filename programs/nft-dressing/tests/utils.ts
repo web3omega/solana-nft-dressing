@@ -1,3 +1,5 @@
+import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+
 import { Metaplex, Nft } from "@metaplex-foundation/js";
 import { Metadata } from "@metaplex-foundation/mpl-token-metadata";
 import { Connection, Keypair, PublicKey, Signer, SystemProgram, GetProgramAccountsFilter, AccountInfo } from "@solana/web3.js";
@@ -18,3 +20,20 @@ export const fetchNFTsInCollection = async (connection: Connection, collectionAd
   //Force convert to NFT
   return output as unknown as Nft[];
 }
+
+export const getAssociatedTokenAddress = async (
+  mint: PublicKey,
+  owner: PublicKey,
+  allowOwnerOffCurve = false,
+  programId = TOKEN_PROGRAM_ID,
+  associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
+): Promise<PublicKey> => {
+  if (!allowOwnerOffCurve && !PublicKey.isOnCurve(owner.toBuffer())) throw new Error();
+
+  const [address] = await PublicKey.findProgramAddress(
+      [owner.toBuffer(), programId.toBuffer(), mint.toBuffer()],
+      associatedTokenProgramId
+  );
+
+  return address;
+};

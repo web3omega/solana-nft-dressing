@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{token::{self, Mint, Token, TokenAccount}};
+use anchor_spl::{token::{Mint, Token, TokenAccount}, metadata::{set_and_verify_collection, SetAndVerifyCollection}};
+use mpl_token_metadata::state::TokenMetadataAccount;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -7,12 +8,24 @@ const TRAIT_PDA_SEED: &[u8] = b"trait";
 
 #[program]
 pub mod nft_dressing {
+
     use super::*;
 
     pub fn apply_trait(ctx: Context<ApplyTrait>) -> Result<()> {
         if ctx.accounts.assembled_mint_token_account.amount == 0 {
             return Err(ErrorCode::OwnerDoesNotOwnNFT.into()) 
         }
+
+        let metadata = mpl_token_metadata::state::Metadata::from_account_info(&ctx.accounts.trait_metadata.to_account_info())?;
+        //anchor_spl::metadata::set_and_verify_collection();
+
+        msg!("TEST {:?}", metadata.mint);
+
+        //SetAndVerifyCollection
+        
+        //set_and_verify_collection
+        //ctx.accounts.assembled_mint.to_account_info()
+
         Ok(())
     }
 
@@ -20,6 +33,7 @@ pub mod nft_dressing {
         if ctx.accounts.assembled_mint_token_account.amount == 0 {
             return Err(ErrorCode::OwnerDoesNotOwnNFT.into()) 
         }
+
         Ok(())
     }
 }
@@ -35,9 +49,10 @@ pub struct ApplyTrait<'info> {
         token::mint = trait_mint,
         token::authority = trait_pda)] //TODO check if this is possible? The ownership to the program/PDA to allow traded NFTs to disassemble
     pub trait_pda: Account<'info, TokenAccount>,
+    /// CHECK: 
+    pub trait_metadata: UncheckedAccount<'info>,
     pub trait_mint: Account<'info, Mint>, 
-    /// CHECK: TODO MAKE THIS A COLLECTION ACCOUNT
-    pub trait_collection: UncheckedAccount<'info>,
+    pub trait_collection: Account<'info, Mint>, 
     pub assembled_mint: Account<'info, Mint>, 
     #[account(
         token::mint = assembled_mint,
@@ -45,8 +60,10 @@ pub struct ApplyTrait<'info> {
     pub assembled_mint_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
     pub owner: Signer<'info>,
+    pub rent: Sysvar<'info, Rent>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+
 }
 
 #[derive(Accounts)]
@@ -61,8 +78,7 @@ pub struct RemoveTrait<'info> {
         token::authority = trait_pda)]
     pub trait_pda: Account<'info, TokenAccount>,
     pub trait_mint: Account<'info, Mint>, 
-        /// CHECK: TODO MAKE THIS A COLLECTION ACCOUNT
-    pub trait_collection: UncheckedAccount<'info>,
+    pub trait_collection: Account<'info, Mint>, 
     pub assembled_mint: Account<'info, Mint>, 
     #[account(
         token::mint = assembled_mint,
