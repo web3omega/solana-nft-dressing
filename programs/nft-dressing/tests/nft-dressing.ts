@@ -1,13 +1,15 @@
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
 import { NftDressing } from "../target/types/nft_dressing";
-import { Connection, Keypair, PublicKey, Signer, SystemProgram } from "@solana/web3.js";
+import { Connection, Keypair, PublicKey, Signer, SystemProgram, GetProgramAccountsFilter } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID, Token, ASSOCIATED_TOKEN_PROGRAM_ID, AuthorityType } from "@solana/spl-token";
 import { keypairIdentity, Metaplex, NftWithToken } from "@metaplex-foundation/js";
+import { fetchNFTsInCollection } from "./utils";
 
 describe("nft-dressing", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
+  const connection = anchor.getProvider().connection;
 
   const program = anchor.workspace.NftDressing as Program<NftDressing>;
 
@@ -26,12 +28,12 @@ describe("nft-dressing", () => {
 
   const payer = new Keypair();
 
-  const metaplex = Metaplex.make(anchor.getProvider().connection)
+  const metaplex = Metaplex.make(connection)
     .use(keypairIdentity(payer));
 
   it("Init mints", async () => {     
-    await anchor.getProvider().connection.confirmTransaction(
-      await anchor.getProvider().connection.requestAirdrop(payer.publicKey, 10000000000),
+    await connection.confirmTransaction(
+      await connection.requestAirdrop(payer.publicKey, 10000000000),
       "confirmed"
     );
 
@@ -68,8 +70,15 @@ describe("nft-dressing", () => {
         })).nft;
       }
     }))
-    
     console.log(JSON.stringify(traits[0]))
+    
+    //NOTE the offset 368 and datasize 679 only counts for these NFTs created. With different creators this value can differ!
+    //const collectionFilter: GetProgramAccountsFilter[] = [{ memcmp: { bytes: traits[0].collection.address.toBase58(), offset: 368 } }, {dataSize: 679 }]
+    //const output = await anchor.getProvider().connection.getProgramAccounts(new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s'), {commitment: 'confirmed', filters: collectionFilter})
+    const output = await fetchNFTsInCollection(connection, traits[0].collection.address)
+    console.log(`Amount found for: ${output.length}`)
+    console.log(`NFT output: ${JSON.stringify(output[0])}`);
+
   });
 
 });
