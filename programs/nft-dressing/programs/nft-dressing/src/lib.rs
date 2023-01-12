@@ -1,7 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{token::{Mint, Token, TokenAccount}, metadata::{set_and_verify_collection, SetAndVerifyCollection, update_metadata_accounts_v2, UpdateMetadataAccountsV2}};
-use mpl_token_metadata::state::TokenMetadataAccount;
-use mpl_token_metadata::state::{DataV2, Collection};
+use anchor_spl::{token::{Mint, Token, TokenAccount}, metadata::{set_and_verify_collection, SetAndVerifyCollection}};
+
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -19,74 +18,23 @@ pub mod nft_dressing {
             return Err(ErrorCode::OwnerDoesNotOwnNFT.into()) 
         }
 
-        let metadata = mpl_token_metadata::state::Metadata::from_account_info(&ctx.accounts.trait_metadata.to_account_info())?;
-        //anchor_spl::metadata::set_and_verify_collection();
-
-        msg!("TEST {:?}", metadata.mint);
-
-        ///
-        /// Step 1 Update the metadata
-        /// 
-         
-       // let mut newCollection = metadata.collection.unwrap();
-       // newCollection.key = ctx.accounts.assembled_mint.key();
-
-        let new_data = DataV2 {
-            name: metadata.data.name,
-            uri: metadata.data.uri,
-            symbol: metadata.data.symbol,
-            seller_fee_basis_points: metadata.data.seller_fee_basis_points,
-            creators: metadata.data.creators,
-            collection: Some(Collection { 
-                verified: false,
-                key: ctx.accounts.assembled_mint.key()
-            }),
-            uses: metadata.uses
-        };
-        //newData.collection
-        /*let newColl = Collection::new(
-            key: ctx.accounts.assembled_mint.key(),
-        );*/
-
-        //newData.collection = metadata.collection;
-        //newData.collection.unwrap().key = ctx.accounts.assembled_mint.key();
-
-        let metadata_update_cpi_ctx = CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            UpdateMetadataAccountsV2 {
-                metadata: ctx.accounts.trait_metadata.to_account_info(),
-                update_authority: ctx.accounts.owner.to_account_info(),//TODO authority should be the PDA
-            }
-        );
-
-        update_metadata_accounts_v2(
-            metadata_update_cpi_ctx, 
-            None, 
-            Some(new_data),
-            None,
-            None
-        )?;
-        
-
-        ///
-        /// Step 2 Set and Verify the collection
-        /// 
-
-        /*let cpi_ctx = CpiContext::new(
+        /// STEP 1 set the collection
+        let cpi_ctx = CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             SetAndVerifyCollection {
-                metadata: ctx.accounts..to_account_info(),
-                collection_authority: ctx.account.owner.to_account_info(), //TODO authority should be the PDA
-                payer: ctx.account.owner.to_account_info(),
-                update_authority: ctx.account.owner.to_account_info(), //TODO authority should be the PDA
-                collection_mint: ctx.account.assembled_mint.to_account_info(),
-                collection_metadata: 
-                collection_master_edition: 
+                metadata: ctx.accounts.trait_metadata.to_account_info(),
+                collection_authority: ctx.accounts.owner.to_account_info(), //TODO authority should be the PDA
+                payer: ctx.accounts.owner.to_account_info(),
+                update_authority: ctx.accounts.owner.to_account_info(), //TODO authority should be the PDA
+                collection_mint: ctx.accounts.assembled_mint.to_account_info(),
+                collection_metadata: ctx.accounts.assembled_metadata.to_account_info(),
+                collection_master_edition: ctx.accounts.assembled_master_edition.to_account_info(), 
             }
         );
         
-        set_and_verify_collection()*/
-        //ctx.accounts.assembled_mint.to_account_info()
+        set_and_verify_collection(cpi_ctx, None)?;
+
+        /// STEP 2 transfer to the vault 
 
         Ok(())
     }
@@ -118,7 +66,11 @@ pub struct ApplyTrait<'info> {
     pub trait_metadata: UncheckedAccount<'info>,
     pub trait_mint: Account<'info, Mint>, 
     pub trait_collection: Account<'info, Mint>, 
+    /// CHECK: 
+    pub assembled_metadata: UncheckedAccount<'info>,
     pub assembled_mint: Account<'info, Mint>, 
+    /// CHECK: 
+    pub assembled_master_edition: UncheckedAccount<'info>,
     #[account(
         token::mint = assembled_mint,
         token::authority = owner)] 

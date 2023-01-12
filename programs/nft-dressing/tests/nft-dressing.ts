@@ -1,10 +1,10 @@
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
 import { NftDressing } from "../target/types/nft_dressing";
-import { Connection, Keypair, PublicKey, Signer, SystemProgram, GetProgramAccountsFilter } from "@solana/web3.js";
+import { Connection, Keypair, PublicKey, Signer, SystemProgram, GetProgramAccountsFilter, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID, Token, ASSOCIATED_TOKEN_PROGRAM_ID, AuthorityType } from "@solana/spl-token";
 import { keypairIdentity, Metaplex, NftWithToken } from "@metaplex-foundation/js";
-import { fetchNFTsInCollection, getAssociatedTokenAddress } from "./utils";
+import { fetchNFTsInCollection, getAssociatedTokenAddress, getMasterAddress } from "./utils";
 
 
 describe("nft-dressing", () => {
@@ -87,6 +87,8 @@ describe("nft-dressing", () => {
   it("Transfer trait", async () => {    
 
     const assembledMint = assemblies[0].address;
+    const assembledMetadataAddress = assemblies[0].metadataAddress;
+
     const assembledMintTokenAccount = await getAssociatedTokenAddress(
       assembledMint,
       payer.publicKey
@@ -105,7 +107,9 @@ describe("nft-dressing", () => {
         programId
     );
 
-    const tx = await program.methods.applyTrait()
+    const masterAddress = await getMasterAddress(assembledMint);
+
+    const instruction = await program.methods.applyTrait()
     .accounts(
     {
       traitPda,
@@ -115,13 +119,34 @@ describe("nft-dressing", () => {
       traitCollection,
       assembledMintTokenAccount,
       owner: payer.publicKey,
-      metadataProgram: metaplexProgramId
-    }).transaction();
+      metadataProgram: metaplexProgramId,
+      assembledMetadata: assembledMetadataAddress,
+      assembledMasterEdition: masterAddress
+    }).instruction();
 
-    tx.feePayer = payer.publicKey;
+    // Step 1 - Fetch Latest Blockhash
+    let latestBlockhash = await connection.getLatestBlockhash('confirmed');
 
-    console.log(await connection.simulateTransaction(tx));
+    //console.log(await connection.simulateTransaction(tx));
+    const messageV0 = new TransactionMessage({
+        payerKey: payer.publicKey,
+        recentBlockhash: latestBlockhash.blockhash,
+        instructions: [instruction]
+    }).compileToV0Message();
+    const transaction = new VersionedTransaction(messageV0);
+    transaction.sign([payer]);
+    const signature = await connection.sendTransaction(transaction);
 
+
+    // Confirm Transaction 
+    const confirmation = await connection.confirmTransaction({
+        signature,
+        blockhash: latestBlockhash.blockhash,
+        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
+    })
+
+    if (confirmation.value.err) { throw new Error("   ❌ - Transfer Trait Transaction not confirmed.") }
+    console.log('🎉 Transfer Trait Transaction Succesfully Confirmed!');
   });
 
 });

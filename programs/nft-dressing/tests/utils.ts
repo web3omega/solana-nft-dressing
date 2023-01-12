@@ -38,3 +38,17 @@ export const getAssociatedTokenAddress = async (
 
   return address;
 };
+
+export const getMasterAddress = async (mint: PublicKey): Promise<PublicKey> => {
+  const [address] = await PublicKey.findProgramAddress(
+    [
+      Buffer.from('metadata', 'utf8'),
+      new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s").toBuffer(),
+      mint.toBuffer(),
+      Buffer.from('edition', 'utf8'),
+    ],
+    new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"),
+  );
+
+  return address;
+}
