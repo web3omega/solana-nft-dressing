@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{token::{Mint, Token, TokenAccount}, metadata::{set_and_verify_collection, SetAndVerifyCollection}};
+use anchor_spl::{token::{Mint, Token, TokenAccount}, metadata::{set_and_verify_collection, SetAndVerifyCollection, update_metadata_accounts_v2, UpdateMetadataAccountsV2}};
 use mpl_token_metadata::state::TokenMetadataAccount;
+use mpl_token_metadata::state::{DataV2, Collection};
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -8,6 +9,8 @@ const TRAIT_PDA_SEED: &[u8] = b"trait";
 
 #[program]
 pub mod nft_dressing {
+
+    
 
     use super::*;
 
@@ -21,9 +24,68 @@ pub mod nft_dressing {
 
         msg!("TEST {:?}", metadata.mint);
 
-        //SetAndVerifyCollection
+        ///
+        /// Step 1 Update the metadata
+        /// 
+         
+       // let mut newCollection = metadata.collection.unwrap();
+       // newCollection.key = ctx.accounts.assembled_mint.key();
+
+        let new_data = DataV2 {
+            name: metadata.data.name,
+            uri: metadata.data.uri,
+            symbol: metadata.data.symbol,
+            seller_fee_basis_points: metadata.data.seller_fee_basis_points,
+            creators: metadata.data.creators,
+            collection: Some(Collection { 
+                verified: false,
+                key: ctx.accounts.assembled_mint.key()
+            }),
+            uses: metadata.uses
+        };
+        //newData.collection
+        /*let newColl = Collection::new(
+            key: ctx.accounts.assembled_mint.key(),
+        );*/
+
+        //newData.collection = metadata.collection;
+        //newData.collection.unwrap().key = ctx.accounts.assembled_mint.key();
+
+        let metadata_update_cpi_ctx = CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            UpdateMetadataAccountsV2 {
+                metadata: ctx.accounts.trait_metadata.to_account_info(),
+                update_authority: ctx.accounts.owner.to_account_info(),//TODO authority should be the PDA
+            }
+        );
+
+        update_metadata_accounts_v2(
+            metadata_update_cpi_ctx, 
+            None, 
+            Some(new_data),
+            None,
+            None
+        )?;
         
-        //set_and_verify_collection
+
+        ///
+        /// Step 2 Set and Verify the collection
+        /// 
+
+        /*let cpi_ctx = CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            SetAndVerifyCollection {
+                metadata: ctx.accounts..to_account_info(),
+                collection_authority: ctx.account.owner.to_account_info(), //TODO authority should be the PDA
+                payer: ctx.account.owner.to_account_info(),
+                update_authority: ctx.account.owner.to_account_info(), //TODO authority should be the PDA
+                collection_mint: ctx.account.assembled_mint.to_account_info(),
+                collection_metadata: 
+                collection_master_edition: 
+            }
+        );
+        
+        set_and_verify_collection()*/
         //ctx.accounts.assembled_mint.to_account_info()
 
         Ok(())
@@ -49,6 +111,9 @@ pub struct ApplyTrait<'info> {
         token::mint = trait_mint,
         token::authority = trait_pda)] //TODO check if this is possible? The ownership to the program/PDA to allow traded NFTs to disassemble
     pub trait_pda: Account<'info, TokenAccount>,
+    #[account(
+        mut
+    )]
     /// CHECK: 
     pub trait_metadata: UncheckedAccount<'info>,
     pub trait_mint: Account<'info, Mint>, 
@@ -63,7 +128,8 @@ pub struct ApplyTrait<'info> {
     pub rent: Sysvar<'info, Rent>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
-
+    /// CHECK: //TODO need to ensure its the metadata program
+    pub metadata_program: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]

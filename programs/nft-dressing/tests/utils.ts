@@ -6,6 +6,7 @@ import { Connection, Keypair, PublicKey, Signer, SystemProgram, GetProgramAccoun
 
 export const fetchNFTsInCollection = async (connection: Connection, collectionAddress: PublicKey): Promise<Nft[]> => {
   //NOTE the offset 368 and datasize 679 only counts for these NFTs created. With different creators this value can differ!
+  // TODO this is not checking if the collection is verified yet!!! (need to add 33th byte boolean true (2))
   const collectionFilter: GetProgramAccountsFilter[] = [{ memcmp: { bytes: collectionAddress.toBase58(), offset: 368 } }, {dataSize: 679 }]
   const metadataAccounts = await connection.getProgramAccounts(new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s'), {commitment: 'confirmed', filters: collectionFilter})
   

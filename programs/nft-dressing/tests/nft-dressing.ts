@@ -34,6 +34,8 @@ describe("nft-dressing", () => {
 
   const programId = new PublicKey('Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS');
 
+  const metaplexProgramId = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
+
   it("Init mints", async () => {     
     await connection.confirmTransaction(
       await connection.requestAirdrop(payer.publicKey, 10000000000),
@@ -113,13 +115,12 @@ describe("nft-dressing", () => {
       traitCollection,
       assembledMintTokenAccount,
       owner: payer.publicKey,
+      metadataProgram: metaplexProgramId
     }).transaction();
 
     tx.feePayer = payer.publicKey;
 
     console.log(await connection.simulateTransaction(tx));
-    //.rpc();
-    console.log(tx);
 
   });
 
