@@ -100,6 +100,8 @@ pub fn unverify_collection(
 #[program]
 pub mod nft_dressing {
 
+    use anchor_spl::token;
+
     use super::*;
 
     pub fn apply_trait(ctx: Context<ApplyTrait>) -> Result<()> {
@@ -174,16 +176,37 @@ pub mod nft_dressing {
         set_and_verify_collection(collection_cpi_ctx, None)?;
 
         // STEP 2 transfer from vault 
-        /*let transfer_cpi_ctx = CpiContext::new(
+        let assembled_key = ctx.accounts.assembled_mint.key();
+        let trait_coll_mint_key = ctx.accounts.trait_collection_mint.key();
+        let (_vault_key, vault_key_bump) =
+            Pubkey::find_program_address(&[TRAIT_PDA_SEED, assembled_key.as_ref(), trait_coll_mint_key.as_ref()], ctx.program_id);
+
+        let seeds = &[TRAIT_PDA_SEED, assembled_key.as_ref(), trait_coll_mint_key.as_ref(), &[vault_key_bump]];
+        let signer = &[&seeds[..]];
+
+        let transfer_cpi_ctx = CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
-                from: ctx.accounts.trait_token_account.to_account_info(),
-                to: ctx.accounts.trait_vault.to_account_info(),
-                authority: ctx.accounts.owner.to_account_info(),
-            }
+                from: ctx.accounts.trait_vault.to_account_info(),
+                to: ctx.accounts.trait_token_account.to_account_info(),
+                authority: ctx.accounts.trait_vault.to_account_info(),
+            },
+            signer
         );
 
-        transfer(transfer_cpi_ctx, 1)?;*/
+        transfer(transfer_cpi_ctx, 1)?;
+
+        // STEP 3 close the token account manually
+        let cpi_accounts = anchor_spl::token::CloseAccount {
+            account: ctx.accounts.trait_vault.to_account_info().clone(),
+            destination: ctx.accounts.owner.to_account_info().clone(),
+            authority: ctx.accounts.trait_vault.to_account_info().clone(),
+        };
+
+        let cpi_program = ctx.accounts.token_program.to_account_info().clone();
+        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
+        token::close_account(cpi_ctx)?;
+
         Ok(())
     }
 }
@@ -239,7 +262,7 @@ pub struct RemoveTrait<'info> {
         mut,
         seeds = [TRAIT_PDA_SEED, assembled_mint.to_account_info().key().as_ref(), trait_collection_mint.to_account_info().key().as_ref()],
         bump,
-        close = owner,
+        //close = owner,
         token::mint = trait_mint,
         token::authority = trait_vault)]
     pub trait_vault: Box<Account<'info, TokenAccount>>,
