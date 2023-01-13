@@ -1058,6 +1058,7 @@ dependencies = [
  "anchor-lang",
  "anchor-spl",
  "mpl-token-metadata",
+ "solana-program",
  "spl-associated-token-account",
 ]
 

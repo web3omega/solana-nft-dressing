@@ -84,7 +84,7 @@ describe("nft-dressing", () => {
   });
 
 
-  it("Transfer trait", async () => {    
+  it("Transfer trait to assembled", async () => {    
 
     const assembledMint = assemblies[0].address;
     const assembledMetadataAddress = assemblies[0].metadataAddress;
@@ -98,6 +98,8 @@ describe("nft-dressing", () => {
     const traitMint = traitNFT.mint.address;
     const traitMetadata = traitNFT.metadataAddress;
     const traitCollection = traitNFT.collection.address;
+
+      console.log('traitCollection:', traitCollection.toString())
 
     const traitTokenAccount = await getAssociatedTokenAddress(
       traitMint,
@@ -113,7 +115,7 @@ describe("nft-dressing", () => {
         programId
     );
 
-    const masterAddress = await getMasterAddress(assembledMint);
+    const assembledMasterEdition = await getMasterAddress(assembledMint);
 
     const instruction = await program.methods.applyTrait()
     .accounts(
@@ -128,7 +130,7 @@ describe("nft-dressing", () => {
       owner: payer.publicKey,
       metadataProgram: metaplexProgramId,
       assembledMetadata: assembledMetadataAddress,
-      assembledMasterEdition: masterAddress
+      assembledMasterEdition
     }).instruction();
 
     // Step 1 - Fetch Latest Blockhash
@@ -158,6 +160,74 @@ describe("nft-dressing", () => {
     
     if (confirmation.value.err) { throw new Error("   ❌ - Transfer Trait Transaction not confirmed.") }
     console.log('🎉 Transfer Trait Transaction Succesfully Confirmed!');
+  });
+
+  it("Remove trait", async () => {  
+
+    const assembledMint = assemblies[0].address;
+    const assembledMetadataAddress = assemblies[0].metadataAddress;
+    const assembledMintTokenAccount = await getAssociatedTokenAddress(
+      assembledMint,
+      payer.publicKey
+    );
+
+    const traitNFT = traits[0];
+    const traitMint = traitNFT.mint.address;
+    const traitMetadata = traitNFT.metadataAddress;
+    const traitCollectionMint = traitNFT.collection.address; // TODO How to deterministic find this address??
+    const traitCollectionMetadata = collectionTraits.filter(collTrait => collTrait.address.toString() === traitCollectionMint.toString())[0].metadataAddress;
+
+    console.log('traitCollection:', traitCollectionMint.toString())
+
+    const traitTokenAccount = await getAssociatedTokenAddress(
+      traitMint,
+      payer.publicKey
+    );
+
+    const [traitPda] = PublicKey.findProgramAddressSync(
+        [
+            Buffer.from(anchor.utils.bytes.utf8.encode('trait')),
+            assembledMint.toBuffer(),
+            traitCollectionMint.toBuffer(),
+        ],
+        programId
+    );
+
+    const traitCollMasterEdition = await getMasterAddress(traitCollectionMint);
+    const assembledMasterEdition = await getMasterAddress(assembledMint);
+
+    const instruction = await program.methods.removeTrait()
+    .accounts(
+    {
+      traitVault: traitPda,
+      assembledMint,
+      traitMetadata,
+      traitMint,
+      traitTokenAccount,
+      traitCollectionMint,
+      assembledMintTokenAccount,
+      owner: payer.publicKey,
+      metadataProgram: metaplexProgramId,
+      traitCollectionMetadata,
+      traitCollMasterEdition,
+      assembledMetadata: assembledMetadataAddress,
+      assembledMasterEdition
+    }).instruction();
+
+    // Step 1 - Fetch Latest Blockhash
+    let latestBlockhash = await connection.getLatestBlockhash('confirmed');
+
+    //console.log(await connection.simulateTransaction(tx));
+    const messageV0 = new TransactionMessage({
+        payerKey: payer.publicKey,
+        recentBlockhash: latestBlockhash.blockhash,
+        instructions: [instruction]
+    }).compileToV0Message();
+    const transaction = new VersionedTransaction(messageV0);
+    transaction.sign([payer]);
+
+    console.log(await connection.simulateTransaction(transaction));
+    const signature = await connection.sendTransaction(transaction);
   });
 
 });

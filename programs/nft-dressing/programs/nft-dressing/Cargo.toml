@@ -19,4 +19,5 @@ default = []
 anchor-lang = "0.26.0"
 anchor-spl = {version = "0.26.0", features = [ "metadata" ] }
 spl-associated-token-account = "^1.0.5"
+solana-program = "1.13.5"
 mpl-token-metadata = {version = "1.4.3", features = [ "no-entrypoint" ] }
