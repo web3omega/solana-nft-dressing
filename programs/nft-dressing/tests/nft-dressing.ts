@@ -93,10 +93,16 @@ describe("nft-dressing", () => {
       assembledMint,
       payer.publicKey
     );
+
     const traitNFT = traits[0];
     const traitMint = traitNFT.mint.address;
     const traitMetadata = traitNFT.metadataAddress;
     const traitCollection = traitNFT.collection.address;
+
+    const traitTokenAccount = await getAssociatedTokenAddress(
+      traitMint,
+      payer.publicKey
+    );
 
     const [traitPda] = PublicKey.findProgramAddressSync(
         [
@@ -112,10 +118,11 @@ describe("nft-dressing", () => {
     const instruction = await program.methods.applyTrait()
     .accounts(
     {
-      traitPda,
+      traitVault: traitPda,
       assembledMint,
       traitMetadata,
       traitMint,
+      traitTokenAccount,
       traitCollection,
       assembledMintTokenAccount,
       owner: payer.publicKey,
@@ -135,7 +142,10 @@ describe("nft-dressing", () => {
     }).compileToV0Message();
     const transaction = new VersionedTransaction(messageV0);
     transaction.sign([payer]);
+
+    console.log(await connection.simulateTransaction(transaction));
     const signature = await connection.sendTransaction(transaction);
+
 
 
     // Confirm Transaction 
@@ -145,6 +155,7 @@ describe("nft-dressing", () => {
         lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
     })
 
+    
     if (confirmation.value.err) { throw new Error("   ❌ - Transfer Trait Transaction not confirmed.") }
     console.log('🎉 Transfer Trait Transaction Succesfully Confirmed!');
   });

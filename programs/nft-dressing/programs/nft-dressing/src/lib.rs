@@ -1,6 +1,8 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{token::{Mint, Token, TokenAccount}, metadata::{set_and_verify_collection, SetAndVerifyCollection}};
-
+use anchor_spl::{
+    token::{Mint, Token, TokenAccount, Transfer, transfer},
+    metadata::{SetAndVerifyCollection, set_and_verify_collection}
+};
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -9,8 +11,6 @@ const TRAIT_PDA_SEED: &[u8] = b"trait";
 #[program]
 pub mod nft_dressing {
 
-    
-
     use super::*;
 
     pub fn apply_trait(ctx: Context<ApplyTrait>) -> Result<()> {
@@ -18,8 +18,8 @@ pub mod nft_dressing {
             return Err(ErrorCode::OwnerDoesNotOwnNFT.into()) 
         }
 
-        /// STEP 1 set the collection
-        let cpi_ctx = CpiContext::new(
+        // STEP 1 set the collection
+        let collection_cpi_ctx = CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             SetAndVerifyCollection {
                 metadata: ctx.accounts.trait_metadata.to_account_info(),
@@ -32,9 +32,20 @@ pub mod nft_dressing {
             }
         );
         
-        set_and_verify_collection(cpi_ctx, None)?;
+        set_and_verify_collection(collection_cpi_ctx, None)?;
 
-        /// STEP 2 transfer to the vault 
+        // STEP 2 transfer to the vault 
+        let transfer_cpi_ctx = CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.trait_token_account.to_account_info(),
+                to: ctx.accounts.trait_vault.to_account_info(),
+                authority: ctx.accounts.owner.to_account_info(),
+            }
+        );
+
+        transfer(transfer_cpi_ctx, 1)?;
+        
 
         Ok(())
     }
@@ -57,14 +68,19 @@ pub struct ApplyTrait<'info> {
         bump,
         payer = owner,
         token::mint = trait_mint,
-        token::authority = trait_pda)] //TODO check if this is possible? The ownership to the program/PDA to allow traded NFTs to disassemble
-    pub trait_pda: Account<'info, TokenAccount>,
+        token::authority = trait_vault)] //TODO check if this is possible? The ownership to the program/PDA to allow traded NFTs to disassemble
+    pub trait_vault: Box<Account<'info, TokenAccount>>,
     #[account(
         mut
     )]
     /// CHECK: 
     pub trait_metadata: UncheckedAccount<'info>,
     pub trait_mint: Account<'info, Mint>, 
+    #[account(
+        mut,
+        token::mint = trait_mint,
+        token::authority = owner)] 
+    pub trait_token_account: Box<Account<'info, TokenAccount>>,
     pub trait_collection: Account<'info, Mint>, 
     /// CHECK: 
     pub assembled_metadata: UncheckedAccount<'info>,
@@ -74,7 +90,7 @@ pub struct ApplyTrait<'info> {
     #[account(
         token::mint = assembled_mint,
         token::authority = owner)] 
-    pub assembled_mint_token_account: Account<'info, TokenAccount>,
+    pub assembled_mint_token_account: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     pub owner: Signer<'info>,
     pub rent: Sysvar<'info, Rent>,
@@ -93,10 +109,17 @@ pub struct RemoveTrait<'info> {
         bump,
         close = owner,
         token::mint = trait_mint,
-        token::authority = trait_pda)]
-    pub trait_pda: Account<'info, TokenAccount>,
+        token::authority = trait_vault)]
+    pub trait_vault: Account<'info, TokenAccount>,
     pub trait_mint: Account<'info, Mint>, 
+    #[account(
+        mut,
+        token::mint = trait_mint,
+        token::authority = owner)] 
+    pub trait_token_account: Account<'info, TokenAccount>,
     pub trait_collection: Account<'info, Mint>, 
+    /// CHECK: 
+    pub trait_coll_master_edition: UncheckedAccount<'info>,
     pub assembled_mint: Account<'info, Mint>, 
     #[account(
         token::mint = assembled_mint,
