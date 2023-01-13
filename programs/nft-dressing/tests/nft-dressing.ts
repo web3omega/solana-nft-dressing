@@ -15,8 +15,10 @@ describe("nft-dressing", () => {
   const program = anchor.workspace.NftDressing as Program<NftDressing>;
 
   /// Collections
+  let collectionAllTraits: NftWithToken;
   let collectionTraits: NftWithToken[] = [];
   let collectionAssembled: NftWithToken;
+  
 
   /// Traits
   let traits: NftWithToken[] = [];
@@ -42,12 +44,25 @@ describe("nft-dressing", () => {
       "confirmed"
     );
 
+    collectionAllTraits = (await metaplex.nfts().create({
+      uri: "https://arweave.net/123",
+      name: `TRAITS`,
+      sellerFeeBasisPoints: 500, // Represents 5.00%.
+    })).nft;
+
     for(let i = 0; i < amountOfTraitsPerCollection; i++){
       collectionTraits[i] = (await metaplex.nfts().create({
         uri: "https://arweave.net/123",
         name: `TRAIT COLL #${i}`,
         sellerFeeBasisPoints: 500, // Represents 5.00%.
+        collection: collectionAllTraits.address
       })).nft;
+      await metaplex.nfts().verifyCollection({
+        mintAddress: collectionTraits[i].address,
+        collectionMintAddress: collectionAllTraits.address,
+        isSizedCollection: false
+      })
+
     }
 
     collectionAssembled = (await metaplex.nfts().create({
@@ -63,6 +78,11 @@ describe("nft-dressing", () => {
         sellerFeeBasisPoints: 500, // Represents 5.00%.
         collection: collectionAssembled.address
       })).nft;
+      await metaplex.nfts().verifyCollection({
+        mintAddress: assemblies[i].address,
+        collectionMintAddress: collectionAssembled.address,
+        isSizedCollection: false
+      })
     }
 
     await Promise.all(collectionTraits.map(async (collection, index) => {
@@ -73,16 +93,21 @@ describe("nft-dressing", () => {
           sellerFeeBasisPoints: 500, // Represents 5.00%.
           collection: collection.address
         })).nft;
+
+        await metaplex.nfts().verifyCollection({
+          mintAddress: traits[i].address,
+          collectionMintAddress: collection.address,
+          isSizedCollection: false
+        })
       }
     }))
+
     console.log(JSON.stringify(traits[0]))
     
     const output = await fetchNFTsInCollection(connection, traits[0].collection.address)
     console.log(`Amount found for: ${output.length}`)
     console.log(`NFT output: ${JSON.stringify(output[0])}`);
-
   });
-
 
   it("Transfer trait to assembled", async () => {    
 
@@ -98,6 +123,8 @@ describe("nft-dressing", () => {
     const traitMint = traitNFT.mint.address;
     const traitMetadata = traitNFT.metadataAddress;
     const traitCollection = traitNFT.collection.address;
+    const traitCollectionMetadata = collectionTraits.filter(collTrait => collTrait.address.toString() === traitCollection.toString())[0].metadataAddress;
+    const traitCollMasterEdition = await getMasterAddress(traitCollection);
 
       console.log('traitCollection:', traitCollection.toString())
 
@@ -130,7 +157,9 @@ describe("nft-dressing", () => {
       owner: payer.publicKey,
       metadataProgram: metaplexProgramId,
       assembledMetadata: assembledMetadataAddress,
-      assembledMasterEdition
+      assembledMasterEdition,
+      traitCollectionMetadata,
+      traitCollMasterEdition
     }).instruction();
 
     // Step 1 - Fetch Latest Blockhash
@@ -147,8 +176,6 @@ describe("nft-dressing", () => {
 
     console.log(await connection.simulateTransaction(transaction));
     const signature = await connection.sendTransaction(transaction);
-
-
 
     // Confirm Transaction 
     const confirmation = await connection.confirmTransaction({
@@ -176,6 +203,8 @@ describe("nft-dressing", () => {
     const traitMetadata = traitNFT.metadataAddress;
     const traitCollectionMint = traitNFT.collection.address; // TODO How to deterministic find this address??
     const traitCollectionMetadata = collectionTraits.filter(collTrait => collTrait.address.toString() === traitCollectionMint.toString())[0].metadataAddress;
+    const traitCollMasterEdition = await getMasterAddress(traitCollectionMint);
+    const assembledMasterEdition = await getMasterAddress(assembledMint);
 
     console.log('traitCollection:', traitCollectionMint.toString())
 
@@ -193,8 +222,7 @@ describe("nft-dressing", () => {
         programId
     );
 
-    const traitCollMasterEdition = await getMasterAddress(traitCollectionMint);
-    const assembledMasterEdition = await getMasterAddress(assembledMint);
+
 
     const instruction = await program.methods.removeTrait()
     .accounts(

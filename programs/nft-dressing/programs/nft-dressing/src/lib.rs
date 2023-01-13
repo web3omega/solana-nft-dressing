@@ -10,7 +10,6 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 const TRAIT_PDA_SEED: &[u8] = b"trait";
 
-
 //// TODO MOVE THIS TO METAPLEX
 pub fn unverify_collection_anchor<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, UnVerifyCollection<'info>>,
@@ -49,54 +48,6 @@ pub struct UnVerifyCollection<'info> {
     pub collection_master_edition: AccountInfo<'info>,
 }
 
-/// # Unverify Collection
-///
-/// If a MetadataAccount Has a Collection allow an Authority of the Collection to unverify an NFT in a Collection
-///
-/// ### Accounts:
-///
-///   0. `[writable]` Metadata account
-///   1. `[signer]` Collection Authority
-///   2. `[signer]` payer
-///   3. `[]` Mint of the Collection
-///   4. `[]` Metadata Account of the Collection
-///   5. `[]` MasterEdition2 Account of the Collection Token
-/*#[allow(clippy::too_many_arguments)]
-pub fn unverify_collection(
-    program_id: Pubkey,
-    metadata: Pubkey,
-    collection_authority: Pubkey,
-    payer: Pubkey,
-    collection_mint: Pubkey,
-    collection: Pubkey,
-    collection_master_edition_account: Pubkey,
-    collection_authority_record: Option<Pubkey>,
-) -> Instruction {
-    let mut accounts = vec![
-        AccountMeta::new(metadata, false),
-        AccountMeta::new(collection_authority, true),
-        AccountMeta::new(payer, true),
-        AccountMeta::new_readonly(collection_mint, false),
-        AccountMeta::new_readonly(collection, false),
-        AccountMeta::new_readonly(collection_master_edition_account, false),
-    ];
-
-    if let Some(collection_authority_record) = collection_authority_record {
-        accounts.push(AccountMeta::new_readonly(
-            collection_authority_record,
-            false,
-        ));
-    }
-
-    Instruction {
-        program_id,
-        accounts,
-        data: MetadataInstruction::UnverifyCollection
-            .try_to_vec()
-            .unwrap(),
-    }
-}*/
-
 #[program]
 pub mod nft_dressing {
 
@@ -109,7 +60,21 @@ pub mod nft_dressing {
             return Err(ErrorCode::OwnerDoesNotOwnNFT.into()) 
         }
 
-        // STEP 1 set the collection
+        // STEP 1 Unverify
+        let unverify_cpi_ctx = CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            UnVerifyCollection {
+                metadata: ctx.accounts.trait_metadata.to_account_info(),
+                collection_authority: ctx.accounts.owner.to_account_info(), //TODO authority should be the PDA
+                collection_mint: ctx.accounts.trait_collection.to_account_info(),
+                collection_metadata: ctx.accounts.trait_collection_metadata.to_account_info(),
+                collection_master_edition: ctx.accounts.trait_coll_master_edition.to_account_info(),  
+            }
+        );
+
+        unverify_collection_anchor(unverify_cpi_ctx, None)?;
+
+        // STEP 2 set the collection
         let collection_cpi_ctx = CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             SetAndVerifyCollection {
@@ -125,7 +90,7 @@ pub mod nft_dressing {
         
         set_and_verify_collection(collection_cpi_ctx, None)?;
 
-        // STEP 2 transfer to the vault 
+        // STEP 3 transfer to the vault 
         let transfer_cpi_ctx = CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
@@ -175,7 +140,7 @@ pub mod nft_dressing {
         
         set_and_verify_collection(collection_cpi_ctx, None)?;
 
-        // STEP 2 transfer from vault 
+        // STEP 3 transfer from vault 
         let assembled_key = ctx.accounts.assembled_mint.key();
         let trait_coll_mint_key = ctx.accounts.trait_collection_mint.key();
         let (_vault_key, vault_key_bump) =
@@ -196,7 +161,7 @@ pub mod nft_dressing {
 
         transfer(transfer_cpi_ctx, 1)?;
 
-        // STEP 3 close the token account manually
+        // STEP 4 close the vault token account manually
         let cpi_accounts = anchor_spl::token::CloseAccount {
             account: ctx.accounts.trait_vault.to_account_info().clone(),
             destination: ctx.accounts.owner.to_account_info().clone(),
@@ -233,7 +198,14 @@ pub struct ApplyTrait<'info> {
         token::mint = trait_mint,
         token::authority = owner)] 
     pub trait_token_account: Box<Account<'info, TokenAccount>>,
+    #[account(
+        mut
+    )]
+    /// CHECK: 
+    pub trait_collection_metadata: UncheckedAccount<'info>,
     pub trait_collection: Account<'info, Mint>, 
+    /// CHECK: 
+    pub trait_coll_master_edition: UncheckedAccount<'info>,
     #[account(
         mut
     )]
