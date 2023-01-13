@@ -1,13 +1,12 @@
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
 import { NftDressing } from "../target/types/nft_dressing";
-import { Connection, Keypair, PublicKey, Signer, SystemProgram, GetProgramAccountsFilter, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID, Token, ASSOCIATED_TOKEN_PROGRAM_ID, AuthorityType } from "@solana/spl-token";
+import { Keypair, PublicKey, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
 import { keypairIdentity, Metaplex, NftWithToken } from "@metaplex-foundation/js";
 import { fetchNFTsInCollection, getAssociatedTokenAddress, getMasterAddress } from "./utils";
 
 
-describe("nft-dressing", () => {
+describe("NFT Assembling", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
   const connection = anchor.getProvider().connection;
@@ -102,14 +101,15 @@ describe("nft-dressing", () => {
       }
     }))
 
-    console.log(JSON.stringify(traits[0]))
+    //console.log(JSON.stringify(traits[0]))
     
     const output = await fetchNFTsInCollection(connection, traits[0].collection.address)
-    console.log(`Amount found for: ${output.length}`)
-    console.log(`NFT output: ${JSON.stringify(output[0])}`);
+    //console.log(`Amount found for: ${output.length}`)
+    console.log(`    🎉 Succesfully created all collections and mints!`);
+    //console.log(`NFT output: ${JSON.stringify(output[0])}`);
   });
 
-  it("Transfer trait to assembled", async () => {    
+  it("Transfer trait to assembled NFT", async () => {    
 
     const assembledMint = assemblies[0].address;
     const assembledMetadataAddress = assemblies[0].metadataAddress;
@@ -126,7 +126,7 @@ describe("nft-dressing", () => {
     const traitCollectionMetadata = collectionTraits.filter(collTrait => collTrait.address.toString() === traitCollection.toString())[0].metadataAddress;
     const traitCollMasterEdition = await getMasterAddress(traitCollection);
 
-      console.log('traitCollection:', traitCollection.toString())
+      //console.log('traitCollection:', traitCollection.toString())
 
     const traitTokenAccount = await getAssociatedTokenAddress(
       traitMint,
@@ -174,7 +174,7 @@ describe("nft-dressing", () => {
     const transaction = new VersionedTransaction(messageV0);
     transaction.sign([payer]);
 
-    console.log(await connection.simulateTransaction(transaction));
+    //console.log(await connection.simulateTransaction(transaction));
     const signature = await connection.sendTransaction(transaction);
 
     // Confirm Transaction 
@@ -186,10 +186,10 @@ describe("nft-dressing", () => {
 
     
     if (confirmation.value.err) { throw new Error("   ❌ - Transfer Trait Transaction not confirmed.") }
-    console.log('🎉 Transfer Trait Transaction Succesfully Confirmed!');
+    console.log('    🎉 Transfer Trait Transaction Succesfully Confirmed!');
   });
 
-  it("Remove trait", async () => {  
+  it("Remove trait from assembled NFT", async () => {  
 
     const assembledMint = assemblies[0].address;
     const assembledMetadataAddress = assemblies[0].metadataAddress;
@@ -206,7 +206,7 @@ describe("nft-dressing", () => {
     const traitCollMasterEdition = await getMasterAddress(traitCollectionMint);
     const assembledMasterEdition = await getMasterAddress(assembledMint);
 
-    console.log('traitCollection:', traitCollectionMint.toString())
+    //console.log('traitCollection:', traitCollectionMint.toString())
 
     const traitTokenAccount = await getAssociatedTokenAddress(
       traitMint,
@@ -221,8 +221,6 @@ describe("nft-dressing", () => {
         ],
         programId
     );
-
-
 
     const instruction = await program.methods.removeTrait()
     .accounts(
@@ -254,8 +252,17 @@ describe("nft-dressing", () => {
     const transaction = new VersionedTransaction(messageV0);
     transaction.sign([payer]);
 
-    console.log(await connection.simulateTransaction(transaction));
+    //console.log(await connection.simulateTransaction(transaction));
     const signature = await connection.sendTransaction(transaction);
+
+    const confirmation = await connection.confirmTransaction({
+      signature,
+      blockhash: latestBlockhash.blockhash,
+      lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
+  })
+
+    if (confirmation.value.err) { throw new Error("   ❌ - Remove Trait Transaction not confirmed.") }
+    console.log('    🎉 Remove Trait Transaction Succesfully Confirmed!');
   });
 
 });
