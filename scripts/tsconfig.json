@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+      "module": "commonjs",
+      "esModuleInterop": true,
+      "target": "es6",
+      "noImplicitAny": true,
+      "resolveJsonModule": true,
+      "moduleResolution": "node",
+      "sourceMap": true,
+      "outDir": "dist",
+      "baseUrl": ".",
+      "jsx": "react-jsx",
+      "paths": {
+          "*": [
+              "node_modules/*"
+          ]
+      }
+  },
+  "include": [
+      "***/*",
+      "./**/*.tsx",
+      "./**/*.ts",
+      "../utils"
+  ]
+}

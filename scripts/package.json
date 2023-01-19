@@ -1,0 +1,9 @@
+{
+  "name": "scripts",
+  "version": "1.0.0",
+  "main": "mint_all.ts",
+  "license": "MIT",
+  "dependencies": {
+    "@solana/web3.js": "^1.73.0"
+  }
+}
