@@ -5,7 +5,6 @@ import { Keypair, PublicKey, TransactionMessage, VersionedTransaction } from "@s
 import { keypairIdentity, Metaplex, NftWithToken } from "@metaplex-foundation/js";
 import { fetchNFTsInCollection, getAssociatedTokenAddress, getMasterAddress } from "./utils";
 
-import { AuthorityType, setAuthority } from '@solana/spl-token';
 
 describe("NFT Assembling", () => {
   // Configure the client to use the local cluster.
@@ -38,7 +37,7 @@ describe("NFT Assembling", () => {
   const metaplex = Metaplex.make(connection)
     .use(keypairIdentity(payer));
 
-  const programId = new PublicKey('Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS');
+  const programId = new PublicKey('ASSYU7dde5y5nhpxhxuz76Q3QhMYATLGqND6J8FGhXL9');
 
   const metaplexProgramId = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 
@@ -76,22 +75,6 @@ describe("NFT Assembling", () => {
 
       //Transfer authority
       await metaplex.nfts().update({nftOrSft: collectionTraits[i], newUpdateAuthority: updateAuthorityPDA});
-
-      const collectionMasterEdition = await getMasterAddress(collectionAllTraits.address);
-
-      // Verify the collection
-      program.methods.verifyNft().accounts(
-        {
-          metadata: collectionTraits[i].metadataAddress,
-          mint: collectionTraits[i].address,
-          collectionMetadata: collectionAllTraits.metadataAddress,
-          collectionMint: collectionAllTraits.address,
-          collectionMasterEdition,
-          owner: payer.publicKey,
-          metadataProgram: metaplexProgramId,
-          updateAuthority: updateAuthorityPDA
-        }
-      )
   }
 
   collectionAssembled = (await metaplex.nfts().create({
@@ -116,22 +99,6 @@ describe("NFT Assembling", () => {
 
     //Transfer authority
     await metaplex.nfts().update({nftOrSft: assemblies[i], newUpdateAuthority: updateAuthorityPDA});
-
-    const collectionMasterEdition = await getMasterAddress(collectionAssembled.address);
-
-    // Verify the collection
-    program.methods.verifyNft().accounts(
-      {
-        metadata: assemblies[i].metadataAddress,
-        mint: assemblies[i].address,
-        collectionMetadata: collectionAssembled.metadataAddress,
-        collectionMint: collectionAssembled.address,
-        collectionMasterEdition,
-        owner: payer.publicKey,
-        metadataProgram: metaplexProgramId,
-        updateAuthority: updateAuthorityPDA
-      }
-    )
   }
 
   await Promise.all(collectionTraits.map(async (collection, index) => {
@@ -151,22 +118,6 @@ describe("NFT Assembling", () => {
 
         //Transfer authority
         await metaplex.nfts().update({nftOrSft: traits[traitId], newUpdateAuthority: updateAuthorityPDA});
-
-        const collectionMasterEdition = await getMasterAddress(collection.address);
-
-        // Verify the collection
-        program.methods.verifyNft().accounts(
-          {
-            metadata: traits[traitId].metadataAddress,
-            mint: traits[traitId].address,
-            collectionMetadata: collection.metadataAddress,
-            collectionMint: collection.address,
-            collectionMasterEdition,
-            owner: payer.publicKey,
-            metadataProgram: metaplexProgramId,
-            updateAuthority: updateAuthorityPDA
-          }
-        )
     }
     
   }))

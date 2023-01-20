@@ -1,6 +1,8 @@
 import { keypairIdentity, Metaplex, NftWithToken } from '@metaplex-foundation/js';
 import { Connection, Keypair, PublicKey } from '@solana/web3.js';
+import { AnchorProvider, BN, Program, utils, Wallet, web3 } from '@project-serum/anchor';
 import wallet from './wallets/wallet.json'
+import * as anchor from "@project-serum/anchor";
 
 /// Collections
 
@@ -19,14 +21,21 @@ const amountOfTraitsCollections = 3;
 const amountOfTraitsToInit = 5;
 const amountOfAssembliesToInit = 5;
 
-let plzContinue = false;
+const programId = new PublicKey('ASSYU7dde5y5nhpxhxuz76Q3QhMYATLGqND6J8FGhXL9');
+
+const connection = new Connection('https://api.devnet.solana.com', 'finalized');
+    
+const payer: Keypair = Keypair.fromSecretKey(Uint8Array.from(wallet));
+
+const [updateAuthorityPDA] = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(anchor.utils.bytes.utf8.encode('update')),
+    ],
+    programId
+);
 
 const run = async () => {
     const urlPrefix = 'https://img.web3omega.dev';
-
-    const connection = new Connection('https://api.devnet.solana.com', 'finalized');
-    
-    const payer: Keypair = Keypair.fromSecretKey(Uint8Array.from(wallet));
 
     const traitCollectionNames = ['A', 'B', 'C', 'D'];
 
@@ -48,6 +57,9 @@ const run = async () => {
     })).nft;
 
     console.log(`collectionAllTraits: ${JSON.stringify(collectionAllTraits)}`)
+
+      //Change update authority to PDA updateAuthority
+    await metaplex.nfts().update({nftOrSft: collectionAllTraits, newUpdateAuthority: updateAuthorityPDA});
   
     await new Promise(resolve => setTimeout(resolve, 30000));
   
@@ -61,26 +73,10 @@ const run = async () => {
           collection: collectionAllTraits.address
         })).nft;
   
-        plzContinue = false;
-        while(!plzContinue)
-        {
-            await new Promise(resolve => setTimeout(resolve, 5000));
-        
-            try {
-                const gotAccount = await connection.getAccountInfo(collectionTraits[i].address);
-                plzContinue = true;
-            } catch(err) {
-                //retry
-            }
-        }
-
         await new Promise(resolve => setTimeout(resolve, 30000));
   
-        await metaplex.nfts().verifyCollection({
-          mintAddress: collectionTraits[i].address,
-          collectionMintAddress: collectionAllTraits.address,
-          isSizedCollection: false
-        })
+        //Transfer authority
+        await metaplex.nfts().update({nftOrSft: collectionTraits[i], newUpdateAuthority: updateAuthorityPDA});
     }
 
     console.log(`collectionTraits: ${JSON.stringify(collectionTraits)}`)
@@ -95,19 +91,9 @@ const run = async () => {
 
     console.log(`collectionAssembled: ${JSON.stringify(collectionAssembled)}`)
   
-    plzContinue = false;
-        while(!plzContinue)
-        {
-            await new Promise(resolve => setTimeout(resolve, 5000));
-        
-            try {
-                const gotAccount = await connection.getAccountInfo(collectionAssembled.address);
-                plzContinue = true;
-            } catch(err) {
-                //retry
-            }
-        }
-        await new Promise(resolve => setTimeout(resolve, 30000));
+    await metaplex.nfts().update({nftOrSft: collectionAssembled, newUpdateAuthority: updateAuthorityPDA});
+
+    await new Promise(resolve => setTimeout(resolve, 30000));
   
     for(let i = 0; i < amountOfAssembliesToInit; i++){
   
@@ -118,21 +104,9 @@ const run = async () => {
             sellerFeeBasisPoints: 500, // Represents 5.00%.
             collection: collectionAssembled.address
         })).nft;
-    
-        plzContinue = false;
-        while(!plzContinue)
-        {
-            await new Promise(resolve => setTimeout(resolve, 5000));
-        
-            try {
-                const gotAccount = await connection.getAccountInfo(assemblies[i].address);
-                plzContinue = true;
-            } catch(err) {
-                //retry
-            }
-        }
 
-        await new Promise(resolve => setTimeout(resolve, 30000));
+        //Transfer authority
+        await metaplex.nfts().update({nftOrSft: assemblies[i], newUpdateAuthority: updateAuthorityPDA});
     }
 
     console.log(`assemblies: ${JSON.stringify(assemblies)}`)
@@ -160,16 +134,12 @@ const run = async () => {
         }
 
         console.log("Verifying")
-        await new Promise(resolve => setTimeout(resolve, 450000));
+        await new Promise(resolve => setTimeout(resolve, 60000));
 
         for(let i = 0; i < amountOfTraitsToInit; i++){
             const traitId = i + amountOfTraitsToInit * index;
 
-            await metaplex.nfts().verifyCollection({
-                mintAddress: traits[traitId].address,
-                collectionMintAddress: collection.address,
-                isSizedCollection: false
-            })
+            await metaplex.nfts().update({nftOrSft: traits[traitId], newUpdateAuthority: updateAuthorityPDA});
 
             await new Promise(resolve => setTimeout(resolve, 2000));
         }
@@ -182,6 +152,8 @@ const run = async () => {
 
     console.log(`traits: ${JSON.stringify(traits)}`)
     console.log(`assemblies: ${JSON.stringify(assemblies)}`)
+
+    // TODO set all verified by the program
 }
 
 run ();

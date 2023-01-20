@@ -8,17 +8,22 @@ module.exports = function (config, env) {
             rules: [
                 ...config.module.rules,
                 {
-                    test: /\.m?[jt]sx?$/,
+                    test: /\.(m?js|ts)$/,
                     enforce: 'pre',
                     use: ['source-map-loader'],
                 },
                 {
-                    test: /\.m?[jt]sx?$/,
-                    resolve: {
-                        fullySpecified: false,
-                    },
+                    test: /\.ttf$/,
+                    use: {
+                        loader: 'file-loader',
+                        options: { 
+                            name: '[name].[ext]',
+                            useRelativePath: true
+                        }
+                    }
                 },
             ],
+            
         },
         plugins: [
             ...config.plugins,
@@ -31,10 +36,11 @@ module.exports = function (config, env) {
             fallback: {
                 assert: require.resolve('assert'),
                 buffer: require.resolve('buffer'),
-                crypto: require.resolve('crypto-browserify'),
                 stream: require.resolve('stream-browserify'),
+                crypto: require.resolve('crypto-browserify'),
             },
         },
         ignoreWarnings: [/Failed to parse source map/],
+      
     };
 };

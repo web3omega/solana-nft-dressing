@@ -6,7 +6,7 @@ use anchor_spl::{
 use mpl_token_metadata::instruction::{MetadataInstruction, unverify_collection};
 use solana_program::instruction::Instruction;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("ASSYU7dde5y5nhpxhxuz76Q3QhMYATLGqND6J8FGhXL9");
 
 const TRAIT_PDA_SEED: &[u8] = b"trait";
 const UPDATE_AUTHORITY_PDA_SEED: &[u8] = b"update";
@@ -191,35 +191,6 @@ pub mod nft_dressing {
 
         Ok(())
     }
-
-    pub fn verify_nft(ctx: Context<VerifyNFT>) -> Result<()> {
-        // This is a small workaround to verify the NFT in the collection at the start. Not needed when the program is functional.
-        // TODO this call is not secure - yet!
-
-        let (_pda_key, pda_key_bump) =
-        Pubkey::find_program_address(&[UPDATE_AUTHORITY_PDA_SEED], ctx.program_id);
-
-        let seeds = &[UPDATE_AUTHORITY_PDA_SEED, &[pda_key_bump]];
-        let signer = &[&seeds[..]];
-
-        let collection_cpi_ctx = CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            SetAndVerifyCollection {
-                metadata: ctx.accounts.metadata.to_account_info(),
-                collection_authority: ctx.accounts.update_authority.to_account_info(), 
-                payer: ctx.accounts.owner.to_account_info(),
-                update_authority: ctx.accounts.update_authority.to_account_info(), 
-                collection_mint: ctx.accounts.collection_mint.to_account_info(),
-                collection_metadata: ctx.accounts.collection_metadata.to_account_info(),
-                collection_master_edition: ctx.accounts.collection_master_edition.to_account_info(), 
-            },
-            signer
-        );
-        
-        set_and_verify_collection(collection_cpi_ctx, None)?;
-
-        Ok(())
-    }
 }
 
 #[derive(Accounts)]
@@ -324,37 +295,6 @@ pub struct RemoveTrait<'info> {
     #[account(
         mut, // Needs to be mut, why?
         seeds = [UPDATE_AUTHORITY_PDA_SEED], 
-        bump
-    )]
-     /// CHECK: 
-    pub update_authority: UncheckedAccount<'info>,
-    #[account(mut)]
-    pub owner: Signer<'info>,
-    pub token_program: Program<'info, Token>,
-    pub system_program: Program<'info, System>,
-    /// CHECK: //TODO need to ensure its the metadata program
-    pub metadata_program: UncheckedAccount<'info>,
-}
-
-#[derive(Accounts)]
-#[instruction()]
-pub struct VerifyNFT<'info> {
-    #[account(
-        mut
-    )]
-    /// CHECK: 
-    pub metadata: UncheckedAccount<'info>,
-    pub mint: Account<'info, Mint>, 
-    #[account(
-        mut
-    )]
-    /// CHECK: 
-    pub collection_metadata: UncheckedAccount<'info>,
-    pub collection_mint: Account<'info, Mint>, 
-    /// CHECK: 
-    pub collection_master_edition: UncheckedAccount<'info>,
-    #[account(
-        seeds = [UPDATE_AUTHORITY_PDA_SEED],
         bump
     )]
      /// CHECK: 
