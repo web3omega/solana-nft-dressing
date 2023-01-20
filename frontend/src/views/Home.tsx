@@ -1,5 +1,6 @@
 import trait_1 from '../img/test_trait_1.png';
 import trait_2 from '../img/test_trait_2.png';
+import icon_solscan from '../img/icon/solscan.png';
 import empty_nft from '../img/empty.png';
 
 export const Home: React.FC = () => {
@@ -11,7 +12,9 @@ export const Home: React.FC = () => {
             <div className='w-2/5 m-2 flex border rounded-lg border-zinc-900 bg-zinc-900'>
                 <div className='w-1/3 flex rounded drop-shadow-lg flex-col m-1 '>
                     <div className='p-1 flex'>
-                        <p className="m-auto text-2xl">Trait A Collection</p>
+                        <p className="m-auto text-2xl">
+                            <a href='https://solscan.io/token/12Z22ESf85indKkidH7NZNcbUQSmzAP3FYfzvELtrMYL?cluster=devnet'>Trait A Collection</a>
+                        </p>
                     </div>
                     <div className='border m-2 p-2 flex rounded border-gray-800 bg-zinc-800 drop-shadow-lg'>
                         <img src={trait_1} />
@@ -26,7 +29,9 @@ export const Home: React.FC = () => {
                 </div>
                 <div className='w-1/3 flex rounded drop-shadow-lg flex-col m-1'>
                     <div className='p-1 flex'>
-                        <p className="m-auto text-2xl">Trait B Collection</p>
+                        <p className="m-auto text-2xl">
+                            <a href='https://solscan.io/token/6MWMshiZ1mCm1bEWgMifqfjbjc7X1J8f2S69NmXfjYiP?cluster=devnet'>Trait B Collection</a><img src={icon_solscan} />
+                        </p>
                     </div>
                     <div className='border m-2 p-2 flex rounded border-gray-800 bg-zinc-800 drop-shadow-lg'>
                         <img src={trait_2} />
@@ -36,7 +41,9 @@ export const Home: React.FC = () => {
                 </div>
                 <div className='w-1/3 flex rounded drop-shadow-lg flex-col m-1'>
                     <div className='p-1 flex'>
-                        <p className="m-auto text-2xl">Trait C Collection</p>
+                        <p className="m-auto text-2xl">
+                            <a href='https://solscan.io/token/9xtcceXroGzAYbLe9ZbKurFWDFKkg1Z2FUU5t13DFEgU?cluster=devnet'>Trait C Collection</a>
+                        </p>
                     </div>
                     <div className='border m-2 p-2 flex rounded border-gray-800 bg-zinc-800 drop-shadow-lg'>
                         <img src={trait_1} />

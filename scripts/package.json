@@ -4,6 +4,7 @@
   "main": "mint_all.ts",
   "license": "MIT",
   "dependencies": {
+    "@metaplex-foundation/js": "^0.17.12",
     "@solana/web3.js": "^1.73.0"
   }
 }

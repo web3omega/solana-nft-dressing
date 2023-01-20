@@ -6,12 +6,17 @@ import { keypairIdentity, Metaplex, NftWithToken } from "@metaplex-foundation/js
 import { fetchNFTsInCollection, getAssociatedTokenAddress, getMasterAddress } from "./utils";
 
 
+
 describe("NFT Assembling", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
   const connection = anchor.getProvider().connection;
 
   const program = anchor.workspace.NftDressing as Program<NftDressing>;
+
+  const urlPrefix = 'https://img.web3omega.com';
+
+  const traitCollectionNames = ['A', 'B', 'C', 'D'];
 
   /// Collections
   let collectionAllTraits: NftWithToken;
@@ -24,7 +29,7 @@ describe("NFT Assembling", () => {
   let assemblies: NftWithToken[] = [];
 
   //Some settings
-  const amountOfTraitsPerCollection = 4;
+  const amountOfTraitsCollections = 3;
   const amountOfTraitsToInit = 3;
   const amountOfAssembliesToInit = 3;
 
@@ -44,69 +49,101 @@ describe("NFT Assembling", () => {
     );
 
     collectionAllTraits = (await metaplex.nfts().create({
-      uri: "https://arweave.net/123",
-      name: `TRAITS`,
+      uri: `${urlPrefix}/collections/traits.json`,
+      name: `TRAITS COLLECTION`,
       sellerFeeBasisPoints: 500, // Represents 5.00%.
-    })).nft;
+  })).nft;
 
-    for(let i = 0; i < amountOfTraitsPerCollection; i++){
+
+  for(let i = 0; i < amountOfTraitsCollections; i++){
+    console.log('Create collectionTrait', i)
+
       collectionTraits[i] = (await metaplex.nfts().create({
-        uri: "https://arweave.net/123",
-        name: `TRAIT COLL #${i}`,
+        uri: `${urlPrefix}/collections/traits_col_${traitCollectionNames[i]}.json`,
+        name: `TRAIT COLL #${traitCollectionNames[i]}`,
         sellerFeeBasisPoints: 500, // Represents 5.00%.
         collection: collectionAllTraits.address
       })).nft;
+
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       await metaplex.nfts().verifyCollection({
         mintAddress: collectionTraits[i].address,
         collectionMintAddress: collectionAllTraits.address,
         isSizedCollection: false
       })
 
-    }
+  }
 
-    collectionAssembled = (await metaplex.nfts().create({
-      uri: "https://arweave.net/123",
-      name: "ASSEMBLED COLLECTION",
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  collectionAssembled = (await metaplex.nfts().create({
+  uri: `${urlPrefix}/collections/assembled.json`,
+  name: "ASSEMBLED COLLECTION",
+  sellerFeeBasisPoints: 500, // Represents 5.00%.
+  })).nft;
+
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  for(let i = 0; i < amountOfAssembliesToInit; i++){
+
+    console.log('Create assemblies', i)
+  assemblies[i] = (await metaplex.nfts().create({
+      uri: `${urlPrefix}/assemblies/assembly_${i + 1}.json`,
+      name: `ASSEMBLY #${i + 1}`,
       sellerFeeBasisPoints: 500, // Represents 5.00%.
-    })).nft;
+      collection: collectionAssembled.address
+  })).nft;
 
-    for(let i = 0; i < amountOfAssembliesToInit; i++){
-      assemblies[i] = (await metaplex.nfts().create({
-        uri: "https://arweave.net/123",
-        name: `ASSEMBLY #${i}`,
-        sellerFeeBasisPoints: 500, // Represents 5.00%.
-        collection: collectionAssembled.address
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  await metaplex.nfts().verifyCollection({
+      mintAddress: assemblies[i].address,
+      collectionMintAddress: collectionAssembled.address,
+      isSizedCollection: false
+  })
+  }
+
+  await Promise.all(collectionTraits.map(async (collection, index) => {
+
+    await new Promise(resolve => setTimeout(resolve, index * 20000));
+
+    console.log('Create traits', index)
+
+    
+  for(let i = 0; i < amountOfTraitsToInit; i++){
+      const traitId = i + amountOfTraitsToInit * index;
+
+      traits[traitId] = (await metaplex.nfts().create({
+      uri: `${urlPrefix}/trait/trait_${traitCollectionNames[index]}_${i + 1}.json`,
+      name: `TRAIT ${traitCollectionNames[index]} #${i + 1}`,
+      sellerFeeBasisPoints: 500, // Represents 5.00%.
+      collection: collection.address
       })).nft;
+
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       await metaplex.nfts().verifyCollection({
-        mintAddress: assemblies[i].address,
-        collectionMintAddress: collectionAssembled.address,
-        isSizedCollection: false
+      mintAddress: traits[traitId].address,
+      collectionMintAddress: collection.address,
+      isSizedCollection: false
       })
-    }
-
-    await Promise.all(collectionTraits.map(async (collection, index) => {
-      for(let i = 0; i < amountOfTraitsToInit; i++){
-        traits[i] = (await metaplex.nfts().create({
-          uri: "https://arweave.net/123",
-          name: `TRAIT #${index}.${i}`,
-          sellerFeeBasisPoints: 500, // Represents 5.00%.
-          collection: collection.address
-        })).nft;
-
-        await metaplex.nfts().verifyCollection({
-          mintAddress: traits[i].address,
-          collectionMintAddress: collection.address,
-          isSizedCollection: false
-        })
-      }
-    }))
+  }
+  }))
 
     //console.log(JSON.stringify(traits[0]))
     
     const output = await fetchNFTsInCollection(connection, traits[0].collection.address)
     //console.log(`Amount found for: ${output.length}`)
     console.log(`    🎉 Succesfully created all collections and mints!`);
-    //console.log(`NFT output: ${JSON.stringify(output[0])}`);
+    //console.log(`NFT output: ${JSON.stringify(output)}`);
+    console.log(`collectionAllTraits: ${JSON.stringify(collectionAllTraits)}`)
+    console.log(`collectionTraits: ${JSON.stringify(collectionTraits)}`)
+    console.log(`collectionAssembled: ${JSON.stringify(collectionAssembled)}`)
+
+    console.log(`traits: ${JSON.stringify(traits)}`)
+    console.log(`assemblies: ${JSON.stringify(assemblies)}`)
   });
 
   it("Transfer trait to assembled NFT", async () => {    
