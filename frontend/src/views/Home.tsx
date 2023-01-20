@@ -2,6 +2,7 @@ import trait_1 from '../img/test_trait_1.png';
 import trait_2 from '../img/test_trait_2.png';
 import icon_solscan from '../img/icon/solscan.png';
 import empty_nft from '../img/empty.png';
+import { Trait } from '../components/Trait';
 
 export const Home: React.FC = () => {
     return <div className='w-full min-h-screen text-slate-100  body-font font-eczar p-8 '>
@@ -12,15 +13,12 @@ export const Home: React.FC = () => {
             <div className='w-2/5 m-2 flex border rounded-lg border-zinc-900 bg-zinc-900'>
                 <div className='w-1/3 flex rounded drop-shadow-lg flex-col m-1 '>
                     <div className='p-1 flex'>
-                        <p className="m-auto text-2xl">
-                            <a href='https://solscan.io/token/12Z22ESf85indKkidH7NZNcbUQSmzAP3FYfzvELtrMYL?cluster=devnet'>Trait A Collection</a>
+                        <p className="m-auto text-xl flex">
+                            Trait A Collection
+                            <a href='https://solscan.io/token/HdW4nXnk3i5MxczuRphnKpZJVzyEojhutEHN3WwCDWEQ?cluster=devnet' target='_blank' rel='noreferrer'><img className='m-2 w-4' src={icon_solscan} alt='solscan' /></a>
                         </p>
                     </div>
-                    <div className='border m-2 p-2 flex rounded border-gray-800 bg-zinc-800 drop-shadow-lg'>
-                        <img src={trait_1} />
-                        <p className="p-1 absolute top-1 left-1/2 -translate-x-1/2">Trait A #1</p>
-                        <button className="p-1 absolute bottom-1 border left-1/2 -translate-x-1/2 rounded">Enable trait</button>
-                    </div>
+                    <Trait imgURL='https://img.web3omega.dev/traits/trait_A_1.png' />
                     <div className='border m-2 p-2 flex rounded border-gray-800 bg-zinc-800 drop-shadow-lg'>
                         <img src={trait_1} />
                         <p className="p-1 absolute top-1 left-1/2 -translate-x-1/2">Trait A #2</p>
@@ -29,8 +27,9 @@ export const Home: React.FC = () => {
                 </div>
                 <div className='w-1/3 flex rounded drop-shadow-lg flex-col m-1'>
                     <div className='p-1 flex'>
-                        <p className="m-auto text-2xl">
-                            <a href='https://solscan.io/token/6MWMshiZ1mCm1bEWgMifqfjbjc7X1J8f2S69NmXfjYiP?cluster=devnet'>Trait B Collection</a><img src={icon_solscan} />
+                        <p className="m-auto text-xl flex">
+                            Trait B Collection
+                            <a href='https://solscan.io/token/3R7v2nCTBEYUPyYxab2CsGck4E3PJfm8K3mqjs7nyT6L?cluster=devnet' target='_blank' rel='noreferrer'><img className='m-1 w-4' src={icon_solscan} alt='solscan' /></a>
                         </p>
                     </div>
                     <div className='border m-2 p-2 flex rounded border-gray-800 bg-zinc-800 drop-shadow-lg'>
@@ -41,8 +40,10 @@ export const Home: React.FC = () => {
                 </div>
                 <div className='w-1/3 flex rounded drop-shadow-lg flex-col m-1'>
                     <div className='p-1 flex'>
-                        <p className="m-auto text-2xl">
-                            <a href='https://solscan.io/token/9xtcceXroGzAYbLe9ZbKurFWDFKkg1Z2FUU5t13DFEgU?cluster=devnet'>Trait C Collection</a>
+                        <p className="m-auto text-xl flex">
+                            Trait C Collection
+                            <a href='https://solscan.io/token/8AxwMMEL5bx9zSfShiwGBWBKncZK5f977pKkb6Pph8NY?cluster=devnet' target='_blank' rel='noreferrer'><img className='m-1 w-4' src={icon_solscan} alt='solscan' /></a>
+                            
                         </p>
                     </div>
                     <div className='border m-2 p-2 flex rounded border-gray-800 bg-zinc-800 drop-shadow-lg'>

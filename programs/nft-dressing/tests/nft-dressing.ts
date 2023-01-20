@@ -5,7 +5,7 @@ import { Keypair, PublicKey, TransactionMessage, VersionedTransaction } from "@s
 import { keypairIdentity, Metaplex, NftWithToken } from "@metaplex-foundation/js";
 import { fetchNFTsInCollection, getAssociatedTokenAddress, getMasterAddress } from "./utils";
 
-
+import { AuthorityType, setAuthority } from '@solana/spl-token';
 
 describe("NFT Assembling", () => {
   // Configure the client to use the local cluster.
@@ -42,6 +42,13 @@ describe("NFT Assembling", () => {
 
   const metaplexProgramId = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 
+  const [updateAuthorityPDA] = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(anchor.utils.bytes.utf8.encode('update')),
+    ],
+    program.programId
+  );
+
   it("Init mints", async () => {     
     await connection.confirmTransaction(
       await connection.requestAirdrop(payer.publicKey, 10000000000),
@@ -54,6 +61,8 @@ describe("NFT Assembling", () => {
       sellerFeeBasisPoints: 500, // Represents 5.00%.
   })).nft;
 
+  //Change update authority to PDA updateAuthority
+  await metaplex.nfts().update({nftOrSft: collectionAllTraits, newUpdateAuthority: updateAuthorityPDA});
 
   for(let i = 0; i < amountOfTraitsCollections; i++){
     console.log('Create collectionTrait', i)
@@ -65,18 +74,25 @@ describe("NFT Assembling", () => {
         collection: collectionAllTraits.address
       })).nft;
 
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      //Transfer authority
+      await metaplex.nfts().update({nftOrSft: collectionTraits[i], newUpdateAuthority: updateAuthorityPDA});
 
-      await metaplex.nfts().verifyCollection({
-        mintAddress: collectionTraits[i].address,
-        collectionMintAddress: collectionAllTraits.address,
-        isSizedCollection: false
-      })
+      const collectionMasterEdition = await getMasterAddress(collectionAllTraits.address);
 
+      // Verify the collection
+      program.methods.verifyNft().accounts(
+        {
+          metadata: collectionTraits[i].metadataAddress,
+          mint: collectionTraits[i].address,
+          collectionMetadata: collectionAllTraits.metadataAddress,
+          collectionMint: collectionAllTraits.address,
+          collectionMasterEdition,
+          owner: payer.publicKey,
+          metadataProgram: metaplexProgramId,
+          updateAuthority: updateAuthorityPDA
+        }
+      )
   }
-
-  await new Promise(resolve => setTimeout(resolve, 1000));
 
   collectionAssembled = (await metaplex.nfts().create({
   uri: `${urlPrefix}/collections/assembled.json`,
@@ -84,66 +100,89 @@ describe("NFT Assembling", () => {
   sellerFeeBasisPoints: 500, // Represents 5.00%.
   })).nft;
 
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  //Change update authority to PDA updateAuthority
+  await metaplex.nfts().update({nftOrSft: collectionAssembled, newUpdateAuthority: updateAuthorityPDA});
 
   for(let i = 0; i < amountOfAssembliesToInit; i++){
 
     console.log('Create assemblies', i)
-  assemblies[i] = (await metaplex.nfts().create({
-      uri: `${urlPrefix}/assemblies/assembly_${i + 1}.json`,
-      name: `ASSEMBLY #${i + 1}`,
-      sellerFeeBasisPoints: 500, // Represents 5.00%.
-      collection: collectionAssembled.address
-  })).nft;
+    assemblies[i] = (await metaplex.nfts().create({
+        uri: `${urlPrefix}/assemblies/assembly_${i + 1}.json`,
+        name: `ASSEMBLY #${i + 1}`,
+        sellerFeeBasisPoints: 500, // Represents 5.00%.
+        collection: collectionAssembled.address
+    })).nft;
 
-  await new Promise(resolve => setTimeout(resolve, 1000));
+    //Transfer authority
+    await metaplex.nfts().update({nftOrSft: assemblies[i], newUpdateAuthority: updateAuthorityPDA});
 
-  await metaplex.nfts().verifyCollection({
-      mintAddress: assemblies[i].address,
-      collectionMintAddress: collectionAssembled.address,
-      isSizedCollection: false
-  })
+    const collectionMasterEdition = await getMasterAddress(collectionAssembled.address);
+
+    // Verify the collection
+    program.methods.verifyNft().accounts(
+      {
+        metadata: assemblies[i].metadataAddress,
+        mint: assemblies[i].address,
+        collectionMetadata: collectionAssembled.metadataAddress,
+        collectionMint: collectionAssembled.address,
+        collectionMasterEdition,
+        owner: payer.publicKey,
+        metadataProgram: metaplexProgramId,
+        updateAuthority: updateAuthorityPDA
+      }
+    )
   }
 
   await Promise.all(collectionTraits.map(async (collection, index) => {
 
-    await new Promise(resolve => setTimeout(resolve, index * 20000));
-
     console.log('Create traits', index)
 
     
-  for(let i = 0; i < amountOfTraitsToInit; i++){
-      const traitId = i + amountOfTraitsToInit * index;
+    for(let i = 0; i < amountOfTraitsToInit; i++){
+        const traitId = i + amountOfTraitsToInit * index;
 
-      traits[traitId] = (await metaplex.nfts().create({
-      uri: `${urlPrefix}/trait/trait_${traitCollectionNames[index]}_${i + 1}.json`,
-      name: `TRAIT ${traitCollectionNames[index]} #${i + 1}`,
-      sellerFeeBasisPoints: 500, // Represents 5.00%.
-      collection: collection.address
-      })).nft;
+        traits[traitId] = (await metaplex.nfts().create({
+        uri: `${urlPrefix}/trait/trait_${traitCollectionNames[index]}_${i + 1}.json`,
+        name: `TRAIT ${traitCollectionNames[index]} #${i + 1}`,
+        sellerFeeBasisPoints: 500, // Represents 5.00%.
+        collection: collection.address
+        })).nft;
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+        //Transfer authority
+        await metaplex.nfts().update({nftOrSft: traits[traitId], newUpdateAuthority: updateAuthorityPDA});
 
-      await metaplex.nfts().verifyCollection({
-      mintAddress: traits[traitId].address,
-      collectionMintAddress: collection.address,
-      isSizedCollection: false
-      })
-  }
+        const collectionMasterEdition = await getMasterAddress(collection.address);
+
+        // Verify the collection
+        program.methods.verifyNft().accounts(
+          {
+            metadata: traits[traitId].metadataAddress,
+            mint: traits[traitId].address,
+            collectionMetadata: collection.metadataAddress,
+            collectionMint: collection.address,
+            collectionMasterEdition,
+            owner: payer.publicKey,
+            metadataProgram: metaplexProgramId,
+            updateAuthority: updateAuthorityPDA
+          }
+        )
+    }
+    
   }))
-
+  
     //console.log(JSON.stringify(traits[0]))
     
     const output = await fetchNFTsInCollection(connection, traits[0].collection.address)
     //console.log(`Amount found for: ${output.length}`)
     console.log(`    🎉 Succesfully created all collections and mints!`);
     //console.log(`NFT output: ${JSON.stringify(output)}`);
-    console.log(`collectionAllTraits: ${JSON.stringify(collectionAllTraits)}`)
+    /*console.log(`collectionAllTraits: ${JSON.stringify(collectionAllTraits)}`)
     console.log(`collectionTraits: ${JSON.stringify(collectionTraits)}`)
     console.log(`collectionAssembled: ${JSON.stringify(collectionAssembled)}`)
 
     console.log(`traits: ${JSON.stringify(traits)}`)
-    console.log(`assemblies: ${JSON.stringify(assemblies)}`)
+    console.log(`assemblies: ${JSON.stringify(assemblies)}`)*/
   });
 
   it("Transfer trait to assembled NFT", async () => {    
@@ -181,23 +220,28 @@ describe("NFT Assembling", () => {
 
     const assembledMasterEdition = await getMasterAddress(assembledMint);
 
+        const accounts = {
+            traitVault: traitPda,
+            assembledMint,
+            traitMetadata,
+            traitMint,
+            traitTokenAccount,
+            traitCollection,
+            assembledMintTokenAccount,
+            owner: payer.publicKey,
+            metadataProgram: metaplexProgramId,
+            assembledMetadata: assembledMetadataAddress,
+            assembledMasterEdition,
+            traitCollectionMetadata,
+            traitCollMasterEdition,
+            updateAuthority: updateAuthorityPDA
+          
+        }
+
+        console.log(JSON.stringify(accounts));
+
     const instruction = await program.methods.applyTrait()
-    .accounts(
-    {
-      traitVault: traitPda,
-      assembledMint,
-      traitMetadata,
-      traitMint,
-      traitTokenAccount,
-      traitCollection,
-      assembledMintTokenAccount,
-      owner: payer.publicKey,
-      metadataProgram: metaplexProgramId,
-      assembledMetadata: assembledMetadataAddress,
-      assembledMasterEdition,
-      traitCollectionMetadata,
-      traitCollMasterEdition
-    }).instruction();
+    .accounts(accounts).instruction();
 
     // Step 1 - Fetch Latest Blockhash
     let latestBlockhash = await connection.getLatestBlockhash('confirmed');
@@ -274,7 +318,8 @@ describe("NFT Assembling", () => {
       traitCollectionMetadata,
       traitCollMasterEdition,
       assembledMetadata: assembledMetadataAddress,
-      assembledMasterEdition
+      assembledMasterEdition,
+      updateAuthority: updateAuthorityPDA
     }).instruction();
 
     // Step 1 - Fetch Latest Blockhash

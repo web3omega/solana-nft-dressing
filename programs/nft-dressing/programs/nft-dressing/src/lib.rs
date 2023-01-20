@@ -9,6 +9,7 @@ use solana_program::instruction::Instruction;
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 const TRAIT_PDA_SEED: &[u8] = b"trait";
+const UPDATE_AUTHORITY_PDA_SEED: &[u8] = b"update";
 
 //// TODO MOVE THIS TO METAPLEX
 pub fn unverify_collection_anchor<'info>(
@@ -60,32 +61,40 @@ pub mod nft_dressing {
             return Err(ErrorCode::OwnerDoesNotOwnNFT.into()) 
         }
 
+        let (_pda_key, pda_key_bump) =
+        Pubkey::find_program_address(&[UPDATE_AUTHORITY_PDA_SEED], ctx.program_id);
+
+        let seeds = &[UPDATE_AUTHORITY_PDA_SEED, &[pda_key_bump]];
+        let signer = &[&seeds[..]];
+
         // STEP 1 Unverify
-        let unverify_cpi_ctx = CpiContext::new(
+        let unverify_cpi_ctx = CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             UnVerifyCollection {
                 metadata: ctx.accounts.trait_metadata.to_account_info(),
-                collection_authority: ctx.accounts.owner.to_account_info(), //TODO authority should be the PDA
+                collection_authority: ctx.accounts.update_authority.to_account_info(),
                 collection_mint: ctx.accounts.trait_collection.to_account_info(),
                 collection_metadata: ctx.accounts.trait_collection_metadata.to_account_info(),
                 collection_master_edition: ctx.accounts.trait_coll_master_edition.to_account_info(),  
-            }
+            },
+            signer
         );
 
         unverify_collection_anchor(unverify_cpi_ctx, None)?;
 
         // STEP 2 set the collection
-        let collection_cpi_ctx = CpiContext::new(
+        let collection_cpi_ctx = CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             SetAndVerifyCollection {
                 metadata: ctx.accounts.trait_metadata.to_account_info(),
-                collection_authority: ctx.accounts.owner.to_account_info(), //TODO authority should be the PDA
+                collection_authority: ctx.accounts.update_authority.to_account_info(), 
                 payer: ctx.accounts.owner.to_account_info(),
-                update_authority: ctx.accounts.owner.to_account_info(), //TODO authority should be the PDA
+                update_authority: ctx.accounts.update_authority.to_account_info(), 
                 collection_mint: ctx.accounts.assembled_mint.to_account_info(),
                 collection_metadata: ctx.accounts.assembled_metadata.to_account_info(),
                 collection_master_edition: ctx.accounts.assembled_master_edition.to_account_info(), 
-            }
+            },
+            signer
         );
         
         set_and_verify_collection(collection_cpi_ctx, None)?;
@@ -110,32 +119,40 @@ pub mod nft_dressing {
             return Err(ErrorCode::OwnerDoesNotOwnNFT.into()) 
         }
 
+        let (_pda_key, pda_key_bump) =
+        Pubkey::find_program_address(&[UPDATE_AUTHORITY_PDA_SEED], ctx.program_id);
+
+        let seeds = &[UPDATE_AUTHORITY_PDA_SEED, &[pda_key_bump]];
+        let signer = &[&seeds[..]];
+
         // STEP 1 Unverify
-        let unverify_cpi_ctx = CpiContext::new(
+        let unverify_cpi_ctx = CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             UnVerifyCollection {
                 metadata: ctx.accounts.trait_metadata.to_account_info(),
-                collection_authority: ctx.accounts.owner.to_account_info(), //TODO authority should be the PDA
+                collection_authority: ctx.accounts.update_authority.to_account_info(), //TODO authority should be the PDA
                 collection_mint: ctx.accounts.assembled_mint.to_account_info(),
                 collection_metadata: ctx.accounts.assembled_metadata.to_account_info(),
                 collection_master_edition: ctx.accounts.assembled_master_edition.to_account_info(),  
-            }
+            },
+            signer
         );
 
         unverify_collection_anchor(unverify_cpi_ctx, None)?;
 
         // STEP 2 set the collection
-        let collection_cpi_ctx = CpiContext::new(
+        let collection_cpi_ctx = CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             SetAndVerifyCollection {
                 metadata: ctx.accounts.trait_metadata.to_account_info(),
-                collection_authority: ctx.accounts.owner.to_account_info(), //TODO authority should be the PDA
+                collection_authority: ctx.accounts.update_authority.to_account_info(), //TODO authority should be the PDA
                 payer: ctx.accounts.owner.to_account_info(),
-                update_authority: ctx.accounts.owner.to_account_info(), //TODO authority should be the PDA
+                update_authority: ctx.accounts.update_authority.to_account_info(), //TODO authority should be the PDA
                 collection_mint: ctx.accounts.trait_collection_mint.to_account_info(),
                 collection_metadata: ctx.accounts.trait_collection_metadata.to_account_info(),
                 collection_master_edition: ctx.accounts.trait_coll_master_edition.to_account_info(), 
-            }
+            },
+            signer
         );
         
         set_and_verify_collection(collection_cpi_ctx, None)?;
@@ -143,11 +160,11 @@ pub mod nft_dressing {
         // STEP 3 transfer from vault 
         let assembled_key = ctx.accounts.assembled_mint.key();
         let trait_coll_mint_key = ctx.accounts.trait_collection_mint.key();
-        let (_vault_key, vault_key_bump) =
+        let (vault_key, vault_key_bump) =
             Pubkey::find_program_address(&[TRAIT_PDA_SEED, assembled_key.as_ref(), trait_coll_mint_key.as_ref()], ctx.program_id);
 
-        let seeds = &[TRAIT_PDA_SEED, assembled_key.as_ref(), trait_coll_mint_key.as_ref(), &[vault_key_bump]];
-        let signer = &[&seeds[..]];
+        let seeds_transfer = &[TRAIT_PDA_SEED, assembled_key.as_ref(), trait_coll_mint_key.as_ref(), &[vault_key_bump]];
+        let signer_transfer = &[&seeds_transfer[..]];
 
         let transfer_cpi_ctx = CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
@@ -156,7 +173,7 @@ pub mod nft_dressing {
                 to: ctx.accounts.trait_token_account.to_account_info(),
                 authority: ctx.accounts.trait_vault.to_account_info(),
             },
-            signer
+            signer_transfer
         );
 
         transfer(transfer_cpi_ctx, 1)?;
@@ -169,8 +186,37 @@ pub mod nft_dressing {
         };
 
         let cpi_program = ctx.accounts.token_program.to_account_info().clone();
-        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
+        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer_transfer);
         token::close_account(cpi_ctx)?;
+
+        Ok(())
+    }
+
+    pub fn verify_nft(ctx: Context<VerifyNFT>) -> Result<()> {
+        // This is a small workaround to verify the NFT in the collection at the start. Not needed when the program is functional.
+        // TODO this call is not secure - yet!
+
+        let (_pda_key, pda_key_bump) =
+        Pubkey::find_program_address(&[UPDATE_AUTHORITY_PDA_SEED], ctx.program_id);
+
+        let seeds = &[UPDATE_AUTHORITY_PDA_SEED, &[pda_key_bump]];
+        let signer = &[&seeds[..]];
+
+        let collection_cpi_ctx = CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            SetAndVerifyCollection {
+                metadata: ctx.accounts.metadata.to_account_info(),
+                collection_authority: ctx.accounts.update_authority.to_account_info(), 
+                payer: ctx.accounts.owner.to_account_info(),
+                update_authority: ctx.accounts.update_authority.to_account_info(), 
+                collection_mint: ctx.accounts.collection_mint.to_account_info(),
+                collection_metadata: ctx.accounts.collection_metadata.to_account_info(),
+                collection_master_edition: ctx.accounts.collection_master_edition.to_account_info(), 
+            },
+            signer
+        );
+        
+        set_and_verify_collection(collection_cpi_ctx, None)?;
 
         Ok(())
     }
@@ -218,6 +264,13 @@ pub struct ApplyTrait<'info> {
         token::mint = assembled_mint,
         token::authority = owner)] 
     pub assembled_mint_token_account: Box<Account<'info, TokenAccount>>,
+    #[account(
+        mut, // Needs to be mut, why?
+        seeds = [UPDATE_AUTHORITY_PDA_SEED], 
+        bump
+    )]
+     /// CHECK: 
+    pub update_authority: UncheckedAccount<'info>,
     #[account(mut)]
     pub owner: Signer<'info>,
     pub rent: Sysvar<'info, Rent>,
@@ -234,7 +287,6 @@ pub struct RemoveTrait<'info> {
         mut,
         seeds = [TRAIT_PDA_SEED, assembled_mint.to_account_info().key().as_ref(), trait_collection_mint.to_account_info().key().as_ref()],
         bump,
-        //close = owner,
         token::mint = trait_mint,
         token::authority = trait_vault)]
     pub trait_vault: Box<Account<'info, TokenAccount>>,
@@ -269,6 +321,44 @@ pub struct RemoveTrait<'info> {
         token::mint = assembled_mint,
         token::authority = owner)] 
     pub assembled_mint_token_account: Box<Account<'info, TokenAccount>>,
+    #[account(
+        mut, // Needs to be mut, why?
+        seeds = [UPDATE_AUTHORITY_PDA_SEED], 
+        bump
+    )]
+     /// CHECK: 
+    pub update_authority: UncheckedAccount<'info>,
+    #[account(mut)]
+    pub owner: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+    /// CHECK: //TODO need to ensure its the metadata program
+    pub metadata_program: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction()]
+pub struct VerifyNFT<'info> {
+    #[account(
+        mut
+    )]
+    /// CHECK: 
+    pub metadata: UncheckedAccount<'info>,
+    pub mint: Account<'info, Mint>, 
+    #[account(
+        mut
+    )]
+    /// CHECK: 
+    pub collection_metadata: UncheckedAccount<'info>,
+    pub collection_mint: Account<'info, Mint>, 
+    /// CHECK: 
+    pub collection_master_edition: UncheckedAccount<'info>,
+    #[account(
+        seeds = [UPDATE_AUTHORITY_PDA_SEED],
+        bump
+    )]
+     /// CHECK: 
+    pub update_authority: UncheckedAccount<'info>,
     #[account(mut)]
     pub owner: Signer<'info>,
     pub token_program: Program<'info, Token>,
