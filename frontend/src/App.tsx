@@ -5,6 +5,11 @@ import { UnsafeBurnerWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { clusterApiUrl } from '@solana/web3.js';
 import React, { FC, ReactNode, useMemo } from 'react';
 import { Home } from './views/Home';
+///TODO Very strange why i need to import buffer myself. This is a small hack, Should be part of entire webpack config.
+import { Buffer } from 'buffer';
+// @ts-ignore
+window.Buffer = Buffer;
+///TODO end hack
 
 require('./App.css');
 require('@solana/wallet-adapter-react-ui/styles.css');

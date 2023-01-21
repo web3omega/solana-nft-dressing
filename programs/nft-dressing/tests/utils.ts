@@ -1,7 +1,7 @@
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
-import { Metaplex, Nft } from "@metaplex-foundation/js";
-import { Metadata } from "@metaplex-foundation/mpl-token-metadata";
+import { AuctionHouseError, Metaplex, Nft } from "@metaplex-foundation/js";
+import { Metadata, TriedToReplaceAnExistingReservationError } from "@metaplex-foundation/mpl-token-metadata";
 import { Connection, Keypair, PublicKey, Signer, SystemProgram, GetProgramAccountsFilter, AccountInfo } from "@solana/web3.js";
 
 export const fetchNFTsInCollection = async (connection: Connection, collectionAddress: PublicKey): Promise<Nft[]> => {
@@ -11,15 +11,18 @@ export const fetchNFTsInCollection = async (connection: Connection, collectionAd
   const metadataAccounts = await connection.getProgramAccounts(new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s'), {commitment: 'confirmed', filters: collectionFilter})
   
   const metaplexFetcher = Metaplex.make(connection)
-  
-  const mints: PublicKey[] = metadataAccounts.map(metadataAccount => {
-    return Metadata.fromAccountInfo(metadataAccount.account)[0].mint;
+  console.log(JSON.stringify(metadataAccounts))
+
+  const nfts = metadataAccounts.map(metadataAccount => {
+    return Metadata.fromAccountInfo(metadataAccount.account)[0];
   })
-  
-  const output = metaplexFetcher.nfts().findAllByMintList({mints});
+
+  console.log(JSON.stringify(nfts));
+
+  //const output = metaplexFetcher.nfts().findAllByMintList({mints});  // Why is this giving null????
 
   //Force convert to NFT
-  return output as unknown as Nft[];
+  return nfts as unknown as Nft[];
 }
 
 export const getAssociatedTokenAddress = async (
