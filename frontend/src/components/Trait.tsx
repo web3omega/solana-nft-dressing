@@ -4,10 +4,10 @@ import icon_solscan from '../img/icon/solscan.png';
 import { PublicKey } from "@solana/web3.js"
 import { useEffect } from "react"
 
-export const Trait: React.FC<{ nft: Nft }> = ({ nft }) => {
+export const Trait: React.FC<{ nft: Nft, onClick: any }> = ({ nft, onClick }) => {
   return <div className='border m-2 p-2 flex rounded border-gray-800 bg-zinc-800 drop-shadow-lg h-48'>
     <img src={nft.json?.image} alt='trait' />
     <p className="p-1 absolute top-1 left-1/2 -translate-x-1/2 w-full flex justify-center">{nft.name}<a href={`https://solscan.io/token/${nft.address}?cluster=devnet`} target='_blank' rel='noreferrer'><img className='mx-2 my-1 w-4' src={icon_solscan} alt='solscan' /></a></p>
-    <button className="p-1 absolute bottom-1 border left-1/2 -translate-x-1/2 rounded">Enable trait</button>
+    <button className="p-1 absolute bottom-1 border left-1/2 -translate-x-1/2 rounded" onClick={() => onClick()}>Enable trait</button>
   </div>
 }

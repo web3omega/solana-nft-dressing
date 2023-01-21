@@ -3,17 +3,23 @@ import trait_2 from '../img/test_trait_2.png';
 import icon_solscan from '../img/icon/solscan.png';
 import empty_nft from '../img/empty.png';
 import { Trait } from '../components/Trait';
-import { Connection, GetProgramAccountsFilter, Keypair, PublicKey } from '@solana/web3.js';
+import { Connection, GetProgramAccountsFilter, Keypair, PublicKey, TransactionMessage, VersionedTransaction } from '@solana/web3.js';
 import { Metadata, keypairIdentity, Metaplex, Nft } from "@metaplex-foundation/js";
 import { useEffect, useState } from 'react';
 import hashlist from '../hashlist.json';
 import { IDL, NftDressing } from '../idl/nft_dressing';
 import { AnchorProvider, Program, Wallet, web3 } from '@project-serum/anchor';
-import { getTraitPDA, programId } from '../utils/utils';
+import { getAssociatedTokenAddress, getMasterAddress, getTraitPDA, programId } from '../utils/utils';
+import { useWallet } from '@solana/wallet-adapter-react';
+import * as anchor from "@project-serum/anchor";
 
 
 export const Home: React.FC = () => {
-    const connection = new Connection('https://rpc.ankr.com/solana_devnet', 'finalized');
+    const wallet = useWallet();
+    
+    const metaplexProgramId = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
+    //const connection = new Connection('https://rpc.ankr.com/solana_devnet', 'finalized');
+    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
     
     // Fixed pubkeys for the collections
     const coll_trait_A = new PublicKey('6EmeCycSPwbxVphxRaW2rLH1xprvJrRNkbckMNSETT3G')
@@ -23,6 +29,7 @@ export const Home: React.FC = () => {
 
     const [fetched, setFetched] = useState(false);
 
+    const [allNfts, setAllNfts] = useState<Nft[]>([])
     const [traitsA, setTraitsA] = useState<Nft[]>([])
     const [traitsB, setTraitsB] = useState<Nft[]>([])
     const [traitsC, setTraitsC] = useState<Nft[]>([])
@@ -53,6 +60,13 @@ export const Home: React.FC = () => {
     const metaplexFetcher = Metaplex.make(connection, {cluster: 'devnet'})
     .use(keypairIdentity(newKeypair)) // Mandatory to use a wallet otherwise any find calls fail (why metaplex????)
 
+    const [updateAuthorityPDA] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from(anchor.utils.bytes.utf8.encode('update')),
+        ],
+        program.programId
+      );
+      
     //const coll_assembly_collection = new PublicKey('')
 
     const fetchTraitsInAssembly = async (assembly: PublicKey) => {
@@ -64,6 +78,91 @@ export const Home: React.FC = () => {
         console.log(token_A)
     }
 
+    const applyTrait = async (traitNFT: Nft) => {
+        if(!wallet.publicKey) return;
+
+        const assembledMint = assemblies[0].address;
+        const assembledMetadataAddress = assemblies[0].metadataAddress;
+    
+        const assembledMintTokenAccount = await getAssociatedTokenAddress(
+          assembledMint,
+          wallet.publicKey
+        );
+
+        const traitMint = traitNFT.mint.address;
+        const traitMetadata = traitNFT.metadataAddress;
+        const traitCollection = traitNFT.collection?.address;
+        if(!traitCollection) return;
+
+        const traitCollectionMetadata = allNfts.filter(collTrait => collTrait.address.toString() === traitCollection.toString())[0].metadataAddress;
+        const traitCollMasterEdition = await getMasterAddress(traitCollection);
+    
+          //console.log('traitCollection:', traitCollection.toString())
+    
+        const traitTokenAccount = await getAssociatedTokenAddress(
+          traitMint,
+          wallet.publicKey
+        );
+    
+        const [traitPda] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from(anchor.utils.bytes.utf8.encode('trait')),
+                assembledMint.toBuffer(),
+                traitCollection.toBuffer(),
+            ],
+            programId
+        );
+    
+        const assembledMasterEdition = await getMasterAddress(assembledMint);
+    
+            const accounts = {
+                traitVault: traitPda,
+                assembledMint,
+                traitMetadata,
+                traitMint,
+                traitTokenAccount,
+                traitCollection,
+                assembledMintTokenAccount,
+                owner: wallet.publicKey,
+                metadataProgram: metaplexProgramId,
+                assembledMetadata: assembledMetadataAddress,
+                assembledMasterEdition,
+                traitCollectionMetadata,
+                traitCollMasterEdition,
+                updateAuthority: updateAuthorityPDA
+              
+            }
+    
+            console.log(JSON.stringify(accounts));
+    
+        const instruction = await program.methods.applyTrait()
+        .accounts(accounts).instruction();
+    
+        // Step 1 - Fetch Latest Blockhash
+        let latestBlockhash = await connection.getLatestBlockhash('finalized');
+    
+        //console.log(await connection.simulateTransaction(tx));
+        const messageV0 = new TransactionMessage({
+            payerKey: wallet.publicKey,
+            recentBlockhash: latestBlockhash.blockhash,
+            instructions: [instruction]
+        }).compileToV0Message();
+        const transaction = new VersionedTransaction(messageV0);
+        //transaction.sign([]);
+    
+        console.log(await connection.simulateTransaction(transaction));
+        const signature = await wallet.sendTransaction(transaction, connection);
+    
+        console.log("TX sig:", signature);
+        // Confirm Transaction 
+        const confirmation = await connection.confirmTransaction({
+            signature,
+            blockhash: latestBlockhash.blockhash,
+            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
+        })
+        console.log("TX confirmation:", confirmation);
+    }
+
     const fetchAllNFTs = async (): Promise<Nft[]> => {
         console.log("Fetching all")
 
@@ -73,15 +172,14 @@ export const Home: React.FC = () => {
 
         console.log(JSON.stringify(output))
 
-        const allNfts = await Promise.all(output.map(async nft => {
+        return await Promise.all(output.map(async nft => {
             return await metaplexFetcher.nfts().load({metadata: nft as Metadata});
-        }))
-
-        return allNfts as Nft[];
+        })) as Nft[];
     }
 
     const fetchAllCollections = async () => {
         const allNfts = await fetchAllNFTs();
+        setAllNfts(allNfts);
 
         setTraitsA(allNfts.filter(nft => nft.collection?.address.toString() === coll_trait_A.toString()))
         setTraitsB(allNfts.filter(nft => nft.collection?.address.toString() === coll_trait_B.toString()))
@@ -114,7 +212,7 @@ export const Home: React.FC = () => {
                         </p>
                     </div>
                     {traitsA.map(trait => {
-                        return <Trait nft={trait} />
+                        return <Trait nft={trait} onClick={() => applyTrait(trait)} />
                     })}
                     {!fetched && 'Loading...'}
                     {fetched && traitsA.length === 0 && 'Found none'}
@@ -127,7 +225,7 @@ export const Home: React.FC = () => {
                         </p>
                     </div>
                     {traitsB.map(trait => {
-                        return <Trait nft={trait} />
+                        return <Trait nft={trait} onClick={() => applyTrait(trait)} />
                     })}
                     {!fetched && 'Loading...'}
                     {fetched && traitsB.length === 0 && 'Found none'}
@@ -141,7 +239,7 @@ export const Home: React.FC = () => {
                         </p>
                     </div>
                     {traitsC.map(trait => {
-                        return <Trait nft={trait} />
+                        return <Trait nft={trait} onClick={() => applyTrait(trait)} />
                     })}
                     {!fetched && 'Loading...'}
                     {fetched && traitsC.length === 0 && 'Found none'}
