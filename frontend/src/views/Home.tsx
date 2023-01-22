@@ -1,5 +1,7 @@
 import trait_1 from '../img/test_trait_1.png';
 import trait_2 from '../img/test_trait_2.png';
+import trait_3 from '../img/test_trait_3.png';
+import img_head from '../img/head.png';
 import icon_solscan from '../img/icon/solscan.png';
 import empty_nft from '../img/empty.png';
 import { Trait } from '../components/Trait';
@@ -22,9 +24,9 @@ export const Home: React.FC = () => {
     const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
     
     // Fixed pubkeys for the collections
-    const coll_trait_A = new PublicKey('6EmeCycSPwbxVphxRaW2rLH1xprvJrRNkbckMNSETT3G')
-    const coll_trait_B = new PublicKey('GEkndwpLQ9xHaoPRenfad5jybgwBCZo1Ue86MXJKYAd8')
-    const coll_trait_C = new PublicKey('GAu921sZx1a2gfJrVajsMKppazBpq77QhanEgCCjBjUZ')
+    const collectionTraitA = new PublicKey('6EmeCycSPwbxVphxRaW2rLH1xprvJrRNkbckMNSETT3G')
+    const collectionTraitB = new PublicKey('GEkndwpLQ9xHaoPRenfad5jybgwBCZo1Ue86MXJKYAd8')
+    const collectionTraitC = new PublicKey('GAu921sZx1a2gfJrVajsMKppazBpq77QhanEgCCjBjUZ')
     const coll_assemblies = new PublicKey('6TPns9NVYBNSBE41WiRfVTek3VXCZgGdr64nXMk14YLV')
 
     const [fetched, setFetched] = useState(false);
@@ -70,12 +72,88 @@ export const Home: React.FC = () => {
     //const coll_assembly_collection = new PublicKey('')
 
     const fetchTraitsInAssembly = async (assembly: PublicKey) => {
-        const traitAPDA = getTraitPDA(assembly, coll_trait_A);
-        const traitAPDB = getTraitPDA(assembly, coll_trait_B);
-        const traitAPDC = getTraitPDA(assembly, coll_trait_C);
+        const traitAPDA = getTraitPDA(assembly, collectionTraitA);
+        const traitAPDB = getTraitPDA(assembly, collectionTraitB);
+        const traitAPDC = getTraitPDA(assembly, collectionTraitC);
 
-        const token_A = await metaplexFetcher.nfts().findByToken({token: traitAPDA})
-        console.log(token_A)
+        setSelectedTraitA((await metaplexFetcher.nfts().findByToken({token: traitAPDA}).catch(_err => {return undefined})) as Nft);
+        setSelectedTraitB((await metaplexFetcher.nfts().findByToken({token: traitAPDB}).catch(_err => {return undefined})) as Nft);
+        setSelectedTraitC((await metaplexFetcher.nfts().findByToken({token: traitAPDC}).catch(_err => {return undefined})) as Nft);
+    }
+
+    const removeTrait = async (traitNFT: Nft, assembledNFT: Nft, traitCollectionMint: PublicKey) => { 
+        if(!wallet.publicKey) return;
+
+        const assembledMint = assembledNFT.address;
+        const assembledMintTokenAccount = await getAssociatedTokenAddress(
+            assembledMint,
+            wallet.publicKey
+        );
+
+        const traitMint = traitNFT.mint.address;
+        const traitCollection = traitCollectionMint;
+        if(!traitCollection) return;
+
+        const traitCollectionMetadata = allNfts.filter(collTrait => collTrait.address.toString() === traitCollection.toString())[0].metadataAddress;
+
+        const traitTokenAccount = await getAssociatedTokenAddress(
+        traitMint,
+        wallet.publicKey
+        );
+
+        const [traitPda] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from(anchor.utils.bytes.utf8.encode('trait')),
+                assembledMint.toBuffer(),
+                traitCollection.toBuffer(),
+            ],
+            programId
+        );
+
+        const accounts = {
+            traitVault: traitPda,
+            assembledMint,
+            traitMetadata: traitNFT.metadataAddress,
+            traitMint,
+            traitTokenAccount,
+            traitCollectionMint: traitCollection,
+            assembledMintTokenAccount,
+            owner: wallet.publicKey,
+            metadataProgram: metaplexProgramId,
+            traitCollectionMetadata,
+            traitCollMasterEdition: await getMasterAddress(traitCollection),
+            assembledMetadata: assembledNFT.metadataAddress,
+            assembledMasterEdition: await getMasterAddress(assembledMint),
+            updateAuthority: updateAuthorityPDA
+        }
+
+        console.log(JSON.stringify(accounts));
+        const instruction = await program.methods.removeTrait()
+        .accounts(
+            accounts
+        ).instruction();
+
+        // Step 1 - Fetch Latest Blockhash
+        let latestBlockhash = await connection.getLatestBlockhash('confirmed');
+
+        //console.log(await connection.simulateTransaction(tx));
+        const messageV0 = new TransactionMessage({
+            payerKey: wallet.publicKey,
+            recentBlockhash: latestBlockhash.blockhash,
+            instructions: [instruction]
+        }).compileToV0Message();
+        const transaction = new VersionedTransaction(messageV0);
+
+        console.log(await connection.simulateTransaction(transaction));
+        const signature = await wallet.sendTransaction(transaction, connection);
+
+        const confirmation = await connection.confirmTransaction({
+            signature,
+            blockhash: latestBlockhash.blockhash,
+            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
+        })
+
+        console.log(confirmation);
     }
 
     const applyTrait = async (traitNFT: Nft) => {
@@ -85,8 +163,8 @@ export const Home: React.FC = () => {
         const assembledMetadataAddress = assemblies[0].metadataAddress;
     
         const assembledMintTokenAccount = await getAssociatedTokenAddress(
-          assembledMint,
-          wallet.publicKey
+            assembledMint,
+            wallet.publicKey
         );
 
         const traitMint = traitNFT.mint.address;
@@ -96,8 +174,6 @@ export const Home: React.FC = () => {
 
         const traitCollectionMetadata = allNfts.filter(collTrait => collTrait.address.toString() === traitCollection.toString())[0].metadataAddress;
         const traitCollMasterEdition = await getMasterAddress(traitCollection);
-    
-          //console.log('traitCollection:', traitCollection.toString())
     
         const traitTokenAccount = await getAssociatedTokenAddress(
           traitMint,
@@ -115,25 +191,22 @@ export const Home: React.FC = () => {
     
         const assembledMasterEdition = await getMasterAddress(assembledMint);
     
-            const accounts = {
-                traitVault: traitPda,
-                assembledMint,
-                traitMetadata,
-                traitMint,
-                traitTokenAccount,
-                traitCollection,
-                assembledMintTokenAccount,
-                owner: wallet.publicKey,
-                metadataProgram: metaplexProgramId,
-                assembledMetadata: assembledMetadataAddress,
-                assembledMasterEdition,
-                traitCollectionMetadata,
-                traitCollMasterEdition,
-                updateAuthority: updateAuthorityPDA
-              
-            }
-    
-            console.log(JSON.stringify(accounts));
+        const accounts = {
+            traitVault: traitPda,
+            assembledMint,
+            traitMetadata,
+            traitMint,
+            traitTokenAccount,
+            traitCollection,
+            assembledMintTokenAccount,
+            owner: wallet.publicKey,
+            metadataProgram: metaplexProgramId,
+            assembledMetadata: assembledMetadataAddress,
+            assembledMasterEdition,
+            traitCollectionMetadata,
+            traitCollMasterEdition,
+            updateAuthority: updateAuthorityPDA
+        }
     
         const instruction = await program.methods.applyTrait()
         .accounts(accounts).instruction();
@@ -148,7 +221,6 @@ export const Home: React.FC = () => {
             instructions: [instruction]
         }).compileToV0Message();
         const transaction = new VersionedTransaction(messageV0);
-        //transaction.sign([]);
     
         console.log(await connection.simulateTransaction(transaction));
         const signature = await wallet.sendTransaction(transaction, connection);
@@ -166,7 +238,6 @@ export const Home: React.FC = () => {
     const fetchAllNFTs = async (): Promise<Nft[]> => {
         console.log("Fetching all")
 
-
         const mints = hashlist.map(hash => {return new PublicKey(hash)});
         const output = await metaplexFetcher.nfts().findAllByMintList({mints}) ;
 
@@ -181,15 +252,15 @@ export const Home: React.FC = () => {
         const allNfts = await fetchAllNFTs();
         setAllNfts(allNfts);
 
-        setTraitsA(allNfts.filter(nft => nft.collection?.address.toString() === coll_trait_A.toString()))
-        setTraitsB(allNfts.filter(nft => nft.collection?.address.toString() === coll_trait_B.toString()))
-        setTraitsC(allNfts.filter(nft => nft.collection?.address.toString() === coll_trait_C.toString()))
+        setTraitsA(allNfts.filter(nft => nft.collection?.address.toString() === collectionTraitA.toString()))
+        setTraitsB(allNfts.filter(nft => nft.collection?.address.toString() === collectionTraitB.toString()))
+        setTraitsC(allNfts.filter(nft => nft.collection?.address.toString() === collectionTraitC.toString()))
         const newAssemblies = allNfts.filter(nft => nft.collection?.address.toString() === coll_assemblies.toString())
 
         console.log(newAssemblies)
         setAssembled(newAssemblies) 
 
-        fetchTraitsInAssembly(newAssemblies[0].address);
+        await fetchTraitsInAssembly(newAssemblies[0].address);
         
         setFetched(true);
     }
@@ -200,7 +271,7 @@ export const Home: React.FC = () => {
 
     return <div className='w-full min-h-screen text-slate-100  body-font font-eczar p-8 '>
         <div className="w-full flex pt-8 text-2xl">
-            <p className="m-auto">NFT Assembling Demo</p>
+            <p className="m-auto">NFT Assembling Demo on Solana Devnet</p>
         </div>
         <div className='w-full flex justify-center'>        
             <div className='w-2/5 m-2 flex border rounded-lg border-zinc-900 bg-zinc-900'>
@@ -208,40 +279,39 @@ export const Home: React.FC = () => {
                     <div className='p-1 flex'>
                         <p className="m-auto text-xl flex">
                             Trait A Collection
-                            <a href={`https://solscan.io/token/${coll_trait_A}?cluster=devnet`} target='_blank' rel='noreferrer'><img className='m-2 w-4' src={icon_solscan} alt='solscan' /></a>
+                            <a href={`https://solscan.io/token/${collectionTraitA}?cluster=devnet`} target='_blank' rel='noreferrer'><img className='m-1 w-4' src={icon_solscan} alt='solscan' /></a>
                         </p>
                     </div>
                     {traitsA.map(trait => {
-                        return <Trait nft={trait} onClick={() => applyTrait(trait)} />
+                        return <Trait nft={trait} onClick={() => applyTrait(trait)} apply={true} />
                     })}
-                    {!fetched && 'Loading...'}
+                    {!fetched && traitsA.length === 0 && 'Loading...'}
                     {fetched && traitsA.length === 0 && 'Found none'}
                 </div>
                 <div className='w-1/3 flex rounded drop-shadow-lg flex-col m-1'>
                     <div className='p-1 flex'>
                         <p className="m-auto text-xl flex">
                             Trait B Collection
-                            <a href={`https://solscan.io/token/${coll_trait_B}?cluster=devnet`} target='_blank' rel='noreferrer'><img className='m-1 w-4' src={icon_solscan} alt='solscan' /></a>
+                            <a href={`https://solscan.io/token/${collectionTraitB}?cluster=devnet`} target='_blank' rel='noreferrer'><img className='m-1 w-4' src={icon_solscan} alt='solscan' /></a>
                         </p>
                     </div>
                     {traitsB.map(trait => {
-                        return <Trait nft={trait} onClick={() => applyTrait(trait)} />
+                        return <Trait nft={trait} onClick={() => applyTrait(trait)} apply={true} />
                     })}
-                    {!fetched && 'Loading...'}
+                    {!fetched && traitsB.length === 0 && 'Loading...'}
                     {fetched && traitsB.length === 0 && 'Found none'}
                 </div>
                 <div className='w-1/3 flex rounded drop-shadow-lg flex-col m-1'>
                     <div className='p-1 flex'>
                         <p className="m-auto text-xl flex">
                             Trait C Collection
-                            <a href={`https://solscan.io/token/${coll_trait_C}?cluster=devnet`} target='_blank' rel='noreferrer'><img className='m-1 w-4' src={icon_solscan} alt='solscan' /></a>
-                            
+                            <a href={`https://solscan.io/token/${collectionTraitC}?cluster=devnet`} target='_blank' rel='noreferrer'><img className='m-1 w-4' src={icon_solscan} alt='solscan' /></a>
                         </p>
                     </div>
                     {traitsC.map(trait => {
-                        return <Trait nft={trait} onClick={() => applyTrait(trait)} />
+                        return <Trait nft={trait} onClick={() => applyTrait(trait)} apply={true} />
                     })}
-                    {!fetched && 'Loading...'}
+                    {!fetched && traitsC.length === 0 && 'Loading...'}
                     {fetched && traitsC.length === 0 && 'Found none'}
                 </div>
             </div>
@@ -251,27 +321,60 @@ export const Home: React.FC = () => {
                         <p className="m-auto text-2xl">Assembled NFTs</p>
                     </div>
                     <div className='border m-2 p-2 flex rounded border-gray-800 bg-zinc-800 drop-shadow-lg justify-center'>
-                        {assemblies.length > 0 && <>
-                            <img className='w-48 h-48' src={assemblies[0].json?.image} alt='assembly'/>
-                            <p className="p-1 absolute top-1 left-1/2 -translate-x-1/2">{assemblies[0].name}</p>
-                        </>}
+                        {assemblies.length > 0 && fetched ? <div>
+                            <div className='w-96 h-96'>
+                                <img className='w-96 h-96 absolute' src={empty_nft} alt='assembly'/>
+                                {selectedTraitC && <img className='w-96 h-96 absolute' src={selectedTraitC.json?.image + '_real.png'} alt='assembly'/>}
+                                {selectedTraitA && <img className='w-96 h-96 absolute' src={selectedTraitA.json?.image + '_real.png'} alt='assembly'/>}
+                                {selectedTraitB && <img className='w-96 h-96 absolute' src={selectedTraitB.json?.image + '_real.png'} alt='assembly'/>}
+                                <img className='w-96 h-96 absolute' src={img_head} alt='assembly'/>
+                            </div>
+                            <p className="p-1 absolute top-1 left-1/2 -translate-x-1/2 flex">
+                                {assemblies[0].name} 
+                                <a href={`https://solscan.io/token/${assemblies[0].address}?cluster=devnet`} target='_blank' rel='noreferrer'><img className='m-1 w-4' src={icon_solscan} alt='solscan' /></a>
+                            </p>
+                        </div>
+                        :
+                        <div className='w-96 h-96'>
+                            <p className="p-1 absolute top-1 left-1/2 -translate-x-1/2 flex text-2xl">
+                                Loading Assembled NFT...
+                            </p>
+                        </div>
+                        }
                     </div>
                     <div className='flex'>
-                        <div className='border m-2 p-2 flex rounded border-gray-800 bg-zinc-800 drop-shadow-lg w-1/3'>
-                            <img src={trait_1} />
-                            <p className="p-1 absolute top-1 left-1/2 -translate-x-1/2">Trait A</p>
-                            <button className="p-1 absolute bottom-1 border left-1/2 -translate-x-1/2 rounded">Remove trait</button>
+                        <div  className='w-1/3'>
+                            {selectedTraitA ?
+                                <Trait nft={selectedTraitA} onClick={() => removeTrait(selectedTraitA, assemblies[0], collectionTraitA)} apply={false} />
+                            :
+                            <div className='border m-2 p-2 flex rounded border-gray-800 bg-zinc-800 drop-shadow-lg'>
+                                <img className='opacity-25' src={trait_2} alt='no trait' />
+                                <p className="p-1 absolute top-1 left-1/2 -translate-x-1/2">Trait A</p>
+                                <p className="p-1 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">{!fetched ? 'Loading...' : 'No Trait active' }</p>
+                            </div>
+                            }                        
                         </div>
-                        <div className='border m-2 p-2 flex rounded border-gray-800 bg-zinc-800 drop-shadow-lg w-1/3'>
-                            <img src={trait_2} />
-                            <p className="p-1 absolute top-1 left-1/2 -translate-x-1/2">Trait B</p>
-                            <button className="p-1 absolute bottom-1 border left-1/2 -translate-x-1/2 rounded">Remove trait</button>
+                        <div  className='w-1/3'>
+                            {selectedTraitB ?
+                                <Trait nft={selectedTraitB} onClick={() => removeTrait(selectedTraitB, assemblies[0], collectionTraitB)} apply={false} />
+                            :
+                            <div className='border m-2 p-2 flex rounded border-gray-800 bg-zinc-800 drop-shadow-lg'>
+                                <img className='opacity-25' src={trait_3} alt='no trait' />
+                                <p className="p-1 absolute top-1 left-1/2 -translate-x-1/2">Trait B</p>
+                                <p className="p-1 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">{!fetched ? 'Loading...' : 'No Trait active' }</p>
+                            </div>
+                            }                        
                         </div>
-                        <div className='border m-2 p-2 flex rounded border-gray-800 bg-zinc-800 drop-shadow-lg w-1/3'>
-                            <img className='opacity-25' src={trait_1} />
-                            <p className="p-1 absolute top-1 left-1/2 -translate-x-1/2">Trait C</p>
-                            <p className="p-1 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded">No Trait active</p>
-                            <button className="p-1 absolute bottom-1 border left-1/2 -translate-x-1/2 rounded">Remove trait</button>
+                        <div className='w-1/3'>
+                            {selectedTraitC ?
+                                <Trait nft={selectedTraitC} onClick={() => removeTrait(selectedTraitC, assemblies[0], collectionTraitC)} apply={false} />
+                            :
+                            <div className='border m-2 p-2 flex rounded border-gray-800 bg-zinc-800 drop-shadow-lg'>
+                                <img className='opacity-25' src={trait_1} alt='no trait' />
+                                <p className="p-1 absolute top-1 left-1/2 -translate-x-1/2">Trait C</p>
+                                <p className="p-1 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">{!fetched ? 'Loading...' : 'No Trait active' }</p>
+                            </div>
+                            }
                         </div>
                     </div>
                 </div>
