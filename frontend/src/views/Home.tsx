@@ -14,9 +14,11 @@ import { AnchorProvider, Program, Wallet, web3 } from '@project-serum/anchor';
 import { getAssociatedTokenAddress, getMasterAddress, getTraitPDA, programId } from '../utils/utils';
 import { useWallet } from '@solana/wallet-adapter-react';
 import * as anchor from '@project-serum/anchor';
+import { useSnackbar } from 'notistack';
 
 export const Home: React.FC = () => {
     const wallet = useWallet();
+    const { enqueueSnackbar } = useSnackbar();
 
     const metaplexProgramId = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
     const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
@@ -100,9 +102,11 @@ export const Home: React.FC = () => {
 
     const removeTrait = async (traitNFT: Nft, assembledNFT: Nft, traitCollectionMint: PublicKey) => {
         if (!wallet.publicKey) {
-            console.log('No wallet connected');
+            enqueueSnackbar('No wallet connected', { variant: 'error' });
             return;
         }
+
+        enqueueSnackbar('Disasembling NFT...', { variant: 'info' });
 
         const assembledMint = assembledNFT.address;
         const assembledMintTokenAccount = await getAssociatedTokenAddress(assembledMint, wallet.publicKey);
@@ -166,14 +170,18 @@ export const Home: React.FC = () => {
             lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
         });
 
+        enqueueSnackbar('Disasembling NFT success!', { variant: 'success' });
+
         console.log(confirmation);
     };
 
     const applyTrait = async (traitNFT: Nft) => {
         if (!wallet.publicKey) {
-            console.log('No wallet connected');
+            enqueueSnackbar('No wallet connected', { variant: 'error' });
             return;
         }
+
+        enqueueSnackbar('Assembling NFT...', { variant: 'info' });
 
         const assembledMint = assemblies[0].address;
         const assembledMetadataAddress = assemblies[0].metadataAddress;
@@ -244,6 +252,8 @@ export const Home: React.FC = () => {
             lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
         });
         console.log('TX confirmation:', confirmation);
+
+        enqueueSnackbar('Assembling NFT success!', { variant: 'success' });
     };
 
     const fetchAllNFTs = async (): Promise<Nft[]> => {

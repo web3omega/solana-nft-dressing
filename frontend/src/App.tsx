@@ -7,6 +7,7 @@ import React, { FC, ReactNode, useMemo } from 'react';
 import { Home } from './views/Home';
 ///TODO Very strange why i need to import buffer myself. This is a small hack, Should be part of entire webpack config.
 import { Buffer } from 'buffer';
+import { SnackbarProvider } from 'notistack';
 // @ts-ignore
 window.Buffer = Buffer;
 ///TODO end hack
@@ -54,9 +55,11 @@ const Context: FC<{ children: ReactNode }> = ({ children }) => {
 
     return (
         <ConnectionProvider endpoint={endpoint}>
-            <WalletProvider wallets={wallets} autoConnect>
-                <WalletModalProvider>{children}</WalletModalProvider>
-            </WalletProvider>
+            <SnackbarProvider>
+                <WalletProvider wallets={wallets} autoConnect>
+                    <WalletModalProvider>{children}</WalletModalProvider>
+                </WalletProvider>
+            </SnackbarProvider>
         </ConnectionProvider>
     );
 };
