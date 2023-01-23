@@ -48,7 +48,7 @@ const Context: FC<{ children: ReactNode }> = ({ children }) => {
             new PhantomWalletAdapter(),
             new UnsafeBurnerWalletAdapter(),
         ],
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line
         [network]
     );
 
@@ -63,8 +63,8 @@ const Context: FC<{ children: ReactNode }> = ({ children }) => {
 
 const Content: FC = () => {
     return (
-        <div className='App' >
-            <div className='fixed top-4 right-4'>
+        <div className="App">
+            <div className="fixed top-4 right-4">
                 <WalletMultiButton />
             </div>
             <Home />

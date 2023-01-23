@@ -99,7 +99,10 @@ export const Home: React.FC = () => {
     };
 
     const removeTrait = async (traitNFT: Nft, assembledNFT: Nft, traitCollectionMint: PublicKey) => {
-        if (!wallet.publicKey) return;
+        if (!wallet.publicKey) {
+            console.log('No wallet connected');
+            return;
+        }
 
         const assembledMint = assembledNFT.address;
         const assembledMintTokenAccount = await getAssociatedTokenAddress(assembledMint, wallet.publicKey);
@@ -167,7 +170,10 @@ export const Home: React.FC = () => {
     };
 
     const applyTrait = async (traitNFT: Nft) => {
-        if (!wallet.publicKey) return;
+        if (!wallet.publicKey) {
+            console.log('No wallet connected');
+            return;
+        }
 
         const assembledMint = assemblies[0].address;
         const assembledMetadataAddress = assemblies[0].metadataAddress;
@@ -283,8 +289,11 @@ export const Home: React.FC = () => {
 
     return (
         <div className="w-full min-h-screen text-slate-100  body-font font-eczar p-8 ">
-            <div className="w-full flex pt-8 text-2xl">
-                <p className="m-auto">NFT Assembling Demo on Solana Devnet</p>
+            <div className="w-full flex pt-8 flex flex-col ">
+                <p className="m-auto text-2xl">NFT Assembling Demo on Solana Devnet</p>
+                <p className="m-auto text-md">
+                    This demo shows all Traits. If you do not own any of these NFTs you cannot transfer them!
+                </p>
             </div>
             <div className="w-full flex justify-center">
                 <div className="w-2/5 m-2 flex border rounded-lg border-zinc-900 bg-zinc-900">
