@@ -1,0 +1,30 @@
+{
+  "env": {
+    "browser": true,
+    "commonjs": true,
+    "es2021": true
+  },
+  "parser": "@typescript-eslint/parser",
+  "extends": ["plugin:prettier/recommended"],
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "project": "./tsconfig.json"
+  },
+  "rules": {
+    "no-unused-vars": 1,
+    "no-console": 1,
+    "global-require": "off",
+    "object-curly-newline": "off",
+    "no-underscore-dangle": "off",
+    "comma-dangle": "off",
+    "arrow-parens": "off",
+    "implicit-arrow-linebreak": "off",
+    "function-paren-newline": "off",
+    "consistent-return": "off",
+    "radix": "off",
+    "curly": "off",
+    "nonblock-statement-body-position": "off",
+    "prettier/prettier": "error"
+  },
+  "plugins": ["prettier"]
+}
