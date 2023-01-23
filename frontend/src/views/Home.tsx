@@ -106,73 +106,80 @@ export const Home: React.FC = () => {
             return;
         }
 
-        enqueueSnackbar('Disasembling NFT...', { variant: 'info' });
+        enqueueSnackbar('Disassembling NFT...', { variant: 'info' });
+        try {
+            const assembledMint = assembledNFT.address;
+            const assembledMintTokenAccount = await getAssociatedTokenAddress(assembledMint, wallet.publicKey);
 
-        const assembledMint = assembledNFT.address;
-        const assembledMintTokenAccount = await getAssociatedTokenAddress(assembledMint, wallet.publicKey);
+            const traitMint = traitNFT.mint.address;
+            const traitCollection = traitCollectionMint;
+            if (!traitCollection) return;
 
-        const traitMint = traitNFT.mint.address;
-        const traitCollection = traitCollectionMint;
-        if (!traitCollection) return;
+            const traitCollectionMetadata = allNfts.filter(
+                (collTrait) => collTrait.address.toString() === traitCollection.toString()
+            )[0].metadataAddress;
 
-        const traitCollectionMetadata = allNfts.filter(
-            (collTrait) => collTrait.address.toString() === traitCollection.toString()
-        )[0].metadataAddress;
+            const traitTokenAccount = await getAssociatedTokenAddress(traitMint, wallet.publicKey);
 
-        const traitTokenAccount = await getAssociatedTokenAddress(traitMint, wallet.publicKey);
+            const [traitPda] = PublicKey.findProgramAddressSync(
+                [
+                    Buffer.from(anchor.utils.bytes.utf8.encode('trait')),
+                    assembledMint.toBuffer(),
+                    traitCollection.toBuffer(),
+                ],
+                programId
+            );
 
-        const [traitPda] = PublicKey.findProgramAddressSync(
-            [
-                Buffer.from(anchor.utils.bytes.utf8.encode('trait')),
-                assembledMint.toBuffer(),
-                traitCollection.toBuffer(),
-            ],
-            programId
-        );
+            const accounts = {
+                traitVault: traitPda,
+                assembledMint,
+                traitMetadata: traitNFT.metadataAddress,
+                traitMint,
+                traitTokenAccount,
+                traitCollectionMint: traitCollection,
+                assembledMintTokenAccount,
+                owner: wallet.publicKey,
+                metadataProgram: metaplexProgramId,
+                traitCollectionMetadata,
+                traitCollMasterEdition: await getMasterAddress(traitCollection),
+                assembledMetadata: assembledNFT.metadataAddress,
+                assembledMasterEdition: await getMasterAddress(assembledMint),
+                updateAuthority: updateAuthorityPDA,
+            };
 
-        const accounts = {
-            traitVault: traitPda,
-            assembledMint,
-            traitMetadata: traitNFT.metadataAddress,
-            traitMint,
-            traitTokenAccount,
-            traitCollectionMint: traitCollection,
-            assembledMintTokenAccount,
-            owner: wallet.publicKey,
-            metadataProgram: metaplexProgramId,
-            traitCollectionMetadata,
-            traitCollMasterEdition: await getMasterAddress(traitCollection),
-            assembledMetadata: assembledNFT.metadataAddress,
-            assembledMasterEdition: await getMasterAddress(assembledMint),
-            updateAuthority: updateAuthorityPDA,
-        };
+            console.log(JSON.stringify(accounts));
+            const instruction = await program.methods.removeTrait().accounts(accounts).instruction();
 
-        console.log(JSON.stringify(accounts));
-        const instruction = await program.methods.removeTrait().accounts(accounts).instruction();
+            // Step 1 - Fetch Latest Blockhash
+            let latestBlockhash = await connection.getLatestBlockhash('confirmed');
 
-        // Step 1 - Fetch Latest Blockhash
-        let latestBlockhash = await connection.getLatestBlockhash('confirmed');
+            //console.log(await connection.simulateTransaction(tx));
+            const messageV0 = new TransactionMessage({
+                payerKey: wallet.publicKey,
+                recentBlockhash: latestBlockhash.blockhash,
+                instructions: [instruction],
+            }).compileToV0Message();
+            const transaction = new VersionedTransaction(messageV0);
 
-        //console.log(await connection.simulateTransaction(tx));
-        const messageV0 = new TransactionMessage({
-            payerKey: wallet.publicKey,
-            recentBlockhash: latestBlockhash.blockhash,
-            instructions: [instruction],
-        }).compileToV0Message();
-        const transaction = new VersionedTransaction(messageV0);
+            console.log(await connection.simulateTransaction(transaction));
+            const signature = await wallet.sendTransaction(transaction, connection);
 
-        console.log(await connection.simulateTransaction(transaction));
-        const signature = await wallet.sendTransaction(transaction, connection);
+            enqueueSnackbar(`Disassembling NFT sent: ${signature}`, { variant: 'success' });
+            console.log(signature);
 
-        const confirmation = await connection.confirmTransaction({
-            signature,
-            blockhash: latestBlockhash.blockhash,
-            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-        });
+            const confirmation = await connection.confirmTransaction({
+                signature,
+                blockhash: latestBlockhash.blockhash,
+                lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+            });
 
-        enqueueSnackbar('Disasembling NFT success!', { variant: 'success' });
+            enqueueSnackbar('Disassembling NFT success!', { variant: 'success' });
 
-        console.log(confirmation);
+            console.log(confirmation);
+            fetchAllCollections();
+        } catch (_err) {
+            enqueueSnackbar('Disassembling NFT ERROR!', { variant: 'error' });
+        }
     };
 
     const applyTrait = async (traitNFT: Nft) => {
@@ -182,78 +189,86 @@ export const Home: React.FC = () => {
         }
 
         enqueueSnackbar('Assembling NFT...', { variant: 'info' });
+        try {
+            const assembledMint = assemblies[0].address;
+            const assembledMetadataAddress = assemblies[0].metadataAddress;
 
-        const assembledMint = assemblies[0].address;
-        const assembledMetadataAddress = assemblies[0].metadataAddress;
+            const assembledMintTokenAccount = await getAssociatedTokenAddress(assembledMint, wallet.publicKey);
 
-        const assembledMintTokenAccount = await getAssociatedTokenAddress(assembledMint, wallet.publicKey);
+            const traitMint = traitNFT.mint.address;
+            const traitMetadata = traitNFT.metadataAddress;
+            const traitCollection = traitNFT.collection?.address;
+            if (!traitCollection) return;
 
-        const traitMint = traitNFT.mint.address;
-        const traitMetadata = traitNFT.metadataAddress;
-        const traitCollection = traitNFT.collection?.address;
-        if (!traitCollection) return;
+            const traitCollectionMetadata = allNfts.filter(
+                (collTrait) => collTrait.address.toString() === traitCollection.toString()
+            )[0].metadataAddress;
+            const traitCollMasterEdition = await getMasterAddress(traitCollection);
 
-        const traitCollectionMetadata = allNfts.filter(
-            (collTrait) => collTrait.address.toString() === traitCollection.toString()
-        )[0].metadataAddress;
-        const traitCollMasterEdition = await getMasterAddress(traitCollection);
+            const traitTokenAccount = await getAssociatedTokenAddress(traitMint, wallet.publicKey);
 
-        const traitTokenAccount = await getAssociatedTokenAddress(traitMint, wallet.publicKey);
+            const [traitPda] = PublicKey.findProgramAddressSync(
+                [
+                    Buffer.from(anchor.utils.bytes.utf8.encode('trait')),
+                    assembledMint.toBuffer(),
+                    traitCollection.toBuffer(),
+                ],
+                programId
+            );
 
-        const [traitPda] = PublicKey.findProgramAddressSync(
-            [
-                Buffer.from(anchor.utils.bytes.utf8.encode('trait')),
-                assembledMint.toBuffer(),
-                traitCollection.toBuffer(),
-            ],
-            programId
-        );
+            const assembledMasterEdition = await getMasterAddress(assembledMint);
 
-        const assembledMasterEdition = await getMasterAddress(assembledMint);
+            const accounts = {
+                traitVault: traitPda,
+                assembledMint,
+                traitMetadata,
+                traitMint,
+                traitTokenAccount,
+                traitCollection,
+                assembledMintTokenAccount,
+                owner: wallet.publicKey,
+                metadataProgram: metaplexProgramId,
+                assembledMetadata: assembledMetadataAddress,
+                assembledMasterEdition,
+                traitCollectionMetadata,
+                traitCollMasterEdition,
+                updateAuthority: updateAuthorityPDA,
+            };
 
-        const accounts = {
-            traitVault: traitPda,
-            assembledMint,
-            traitMetadata,
-            traitMint,
-            traitTokenAccount,
-            traitCollection,
-            assembledMintTokenAccount,
-            owner: wallet.publicKey,
-            metadataProgram: metaplexProgramId,
-            assembledMetadata: assembledMetadataAddress,
-            assembledMasterEdition,
-            traitCollectionMetadata,
-            traitCollMasterEdition,
-            updateAuthority: updateAuthorityPDA,
-        };
+            const instruction = await program.methods.applyTrait().accounts(accounts).instruction();
 
-        const instruction = await program.methods.applyTrait().accounts(accounts).instruction();
+            // Step 1 - Fetch Latest Blockhash
+            let latestBlockhash = await connection.getLatestBlockhash('finalized');
 
-        // Step 1 - Fetch Latest Blockhash
-        let latestBlockhash = await connection.getLatestBlockhash('finalized');
+            //console.log(await connection.simulateTransaction(tx));
+            const messageV0 = new TransactionMessage({
+                payerKey: wallet.publicKey,
+                recentBlockhash: latestBlockhash.blockhash,
+                instructions: [instruction],
+            }).compileToV0Message();
+            const transaction = new VersionedTransaction(messageV0);
 
-        //console.log(await connection.simulateTransaction(tx));
-        const messageV0 = new TransactionMessage({
-            payerKey: wallet.publicKey,
-            recentBlockhash: latestBlockhash.blockhash,
-            instructions: [instruction],
-        }).compileToV0Message();
-        const transaction = new VersionedTransaction(messageV0);
+            console.log(await connection.simulateTransaction(transaction));
+            const signature = await wallet.sendTransaction(transaction, connection);
 
-        console.log(await connection.simulateTransaction(transaction));
-        const signature = await wallet.sendTransaction(transaction, connection);
+            console.log('TX sig:', signature);
 
-        console.log('TX sig:', signature);
-        // Confirm Transaction
-        const confirmation = await connection.confirmTransaction({
-            signature,
-            blockhash: latestBlockhash.blockhash,
-            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-        });
-        console.log('TX confirmation:', confirmation);
+            enqueueSnackbar(`Assembling NFT sent: ${signature}`, { variant: 'success' });
+            console.log(signature);
 
-        enqueueSnackbar('Assembling NFT success!', { variant: 'success' });
+            // Confirm Transaction
+            const confirmation = await connection.confirmTransaction({
+                signature,
+                blockhash: latestBlockhash.blockhash,
+                lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+            });
+            console.log('TX confirmation:', confirmation);
+
+            enqueueSnackbar('Assembling NFT confirmed!', { variant: 'success' });
+            fetchAllCollections();
+        } catch (err) {
+            enqueueSnackbar(`Assembling NFT ERROR! ${(err as Error).message}`, { variant: 'error' });
+        }
     };
 
     const fetchAllNFTs = async (): Promise<Nft[]> => {
