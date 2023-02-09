@@ -21,9 +21,10 @@ export const Home: React.FC = () => {
     const wallet = useWallet();
     const { enqueueSnackbar } = useSnackbar();
 
-    const heliusURL = `https://rpc.helius.xyz/?api-key=${process.env.REACT_APP_HELIUS_API_KEY}`;
+    const heliusRPCURL = `https://rpc.helius.xyz/?api-key=${process.env.REACT_APP_HELIUS_API_KEY}`;
+    const heliusAPIURL = `https://api.helius.xyz/v1/mintlist?api-key=${process.env.REACT_APP_HELIUS_API_KEY}`;
     const metaplexProgramId = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
-    const connection = new Connection(heliusURL, 'confirmed');
+    const connection = new Connection(heliusRPCURL, 'confirmed');
 
     // Fixed pubkeys for the collections
     const collectionTraitA = new PublicKey('89PSs8ZPKACaK1J2hqU6zu35t2tC1PUm5Tyw9RfsCieF');
@@ -46,11 +47,16 @@ export const Home: React.FC = () => {
     const newKeypair = Keypair.generate();
 
     const getMintlist = async () => {
-        const { data } = await axios.post(heliusURL, {
+        const { data } = await axios.post(heliusAPIURL, {
             query: {
-                verifiedCollectionAddresses: collectionAssemblies.toString(),
+                firstVerifiedCreators: ['MinTidd7LYDXMMCuY8KjzWVLzYFuj5215n1R7cvNp6Y'],
+                //verifiedCollectionAddresses: collectionAssemblies.toString(),
+            },
+            options: {
+                limit: 100,
             },
         });
+        console.log(data);
         console.log('Mintlist: ', data.result);
     };
 
@@ -73,7 +79,7 @@ export const Home: React.FC = () => {
     });
 
     const program = new Program<NftDressing>(IDL, programId, provider);
-    const metaplexFetcher = Metaplex.make(connection, { cluster: 'devnet' }).use(keypairIdentity(newKeypair)); // Mandatory to use a wallet otherwise any find calls fail (why metaplex????)
+    const metaplexFetcher = Metaplex.make(connection, { cluster: 'mainnet-beta' }).use(keypairIdentity(newKeypair)); // Mandatory to use a wallet otherwise any find calls fail (why metaplex????)
 
     const [updateAuthorityPDA] = PublicKey.findProgramAddressSync(
         [Buffer.from(anchor.utils.bytes.utf8.encode('update'))],
@@ -322,7 +328,7 @@ export const Home: React.FC = () => {
     useEffect(() => {
         fetchAllCollections();
 
-        getMintlist();
+        //getMintlist(); //TODO make this a button
     }, []);
 
     return (
