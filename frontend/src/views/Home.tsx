@@ -15,19 +15,21 @@ import { getAssociatedTokenAddress, getMasterAddress, getTraitPDA, programId } f
 import { useWallet } from '@solana/wallet-adapter-react';
 import * as anchor from '@project-serum/anchor';
 import { useSnackbar } from 'notistack';
+import axios from 'axios';
 
 export const Home: React.FC = () => {
     const wallet = useWallet();
     const { enqueueSnackbar } = useSnackbar();
 
+    const heliusURL = `https://rpc.helius.xyz/?api-key=${process.env.REACT_APP_HELIUS_API_KEY}`;
     const metaplexProgramId = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
-    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+    const connection = new Connection(heliusURL, 'confirmed');
 
     // Fixed pubkeys for the collections
-    const collectionTraitA = new PublicKey('6EmeCycSPwbxVphxRaW2rLH1xprvJrRNkbckMNSETT3G');
-    const collectionTraitB = new PublicKey('GEkndwpLQ9xHaoPRenfad5jybgwBCZo1Ue86MXJKYAd8');
-    const collectionTraitC = new PublicKey('GAu921sZx1a2gfJrVajsMKppazBpq77QhanEgCCjBjUZ');
-    const coll_assemblies = new PublicKey('6TPns9NVYBNSBE41WiRfVTek3VXCZgGdr64nXMk14YLV');
+    const collectionTraitA = new PublicKey('89PSs8ZPKACaK1J2hqU6zu35t2tC1PUm5Tyw9RfsCieF');
+    const collectionTraitB = new PublicKey('BEvH9bn4SbjPzSNBLBeKnb5w7cArTZdeXaZGhrj7jgFY');
+    const collectionTraitC = new PublicKey('7EjnnApGS5TnoZhUepMEWc6KfcHoa48ehTcPNHN1B7Us');
+    const collectionAssemblies = new PublicKey('CX5X3SKxbHzF3qzRFe8YThMto19nteyd6kEDGkBqJpQm');
 
     const [fetched, setFetched] = useState(false);
 
@@ -42,6 +44,15 @@ export const Home: React.FC = () => {
     const [selectedTraitC, setSelectedTraitC] = useState<Nft>();
 
     const newKeypair = Keypair.generate();
+
+    const getMintlist = async () => {
+        const { data } = await axios.post(heliusURL, {
+            query: {
+                verifiedCollectionAddresses: collectionAssemblies.toString(),
+            },
+        });
+        console.log('Mintlist: ', data.result);
+    };
 
     const w: Wallet = {
         payer: newKeypair,
@@ -298,7 +309,7 @@ export const Home: React.FC = () => {
 
         // Assembled
         const newAssemblies = allNfts.filter(
-            (nft) => nft.collection?.address.toString() === coll_assemblies.toString()
+            (nft) => nft.collection?.address.toString() === collectionAssemblies.toString()
         );
         setAssembled(newAssemblies);
 
@@ -310,6 +321,8 @@ export const Home: React.FC = () => {
 
     useEffect(() => {
         fetchAllCollections();
+
+        getMintlist();
     }, []);
 
     return (
