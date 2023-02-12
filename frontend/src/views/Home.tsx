@@ -2,7 +2,7 @@ import trait_1 from '../img/test_trait_1.png';
 import trait_2 from '../img/test_trait_2.png';
 import trait_3 from '../img/test_trait_3.png';
 import img_head from '../img/head.png';
-import icon_solscan from '../img/icon/solscan.png';
+import icon_solanafm from '../img/icon/solanafm.png';
 import empty_nft from '../img/empty.png';
 import { Trait } from '../components/Trait';
 import { Connection, Keypair, PublicKey, TransactionMessage, VersionedTransaction } from '@solana/web3.js';
@@ -47,17 +47,27 @@ export const Home: React.FC = () => {
     const newKeypair = Keypair.generate();
 
     const getMintlist = async () => {
+        const collection = collectionTraitA.toString();
+
         const { data } = await axios.post(heliusAPIURL, {
             query: {
-                firstVerifiedCreators: ['MinTidd7LYDXMMCuY8KjzWVLzYFuj5215n1R7cvNp6Y'],
-                //verifiedCollectionAddresses: collectionAssemblies.toString(),
+                //firstVerifiedCreators: ['MinTidd7LYDXMMCuY8KjzWVLzYFuj5215n1R7cvNp6Y'],
+                verifiedCollectionAddresses: [
+                    collectionTraitA,
+                    collectionTraitB,
+                    collectionTraitC,
+                    collectionAssemblies,
+                ],
             },
             options: {
                 limit: 100,
             },
         });
+
         console.log(data);
         console.log('Mintlist: ', data.result);
+
+        enqueueSnackbar(`Found ${data.result.length} NFTs in collection ${collection}`, { variant: 'info' });
     };
 
     const w: Wallet = {
@@ -328,7 +338,7 @@ export const Home: React.FC = () => {
     useEffect(() => {
         fetchAllCollections();
 
-        //getMintlist(); //TODO make this a button
+        //getMintlist(); //TODO make this a button?
     }, []);
 
     return (
@@ -338,6 +348,9 @@ export const Home: React.FC = () => {
                 <p className="m-auto text-md">
                     This demo shows all Traits. If you do not own any of these NFTs you cannot transfer them!
                 </p>
+                <button className="p-2 m-2 w-48 m-auto border-2" onClick={() => getMintlist()}>
+                    Fetch from helius!
+                </button>
             </div>
             <div className="w-full flex justify-center">
                 <div className="w-2/5 m-2 flex border rounded-lg border-zinc-900 bg-zinc-900">
@@ -346,11 +359,11 @@ export const Home: React.FC = () => {
                             <p className="m-auto text-xl flex">
                                 Trait A Collection
                                 <a
-                                    href={`https://solscan.io/token/${collectionTraitA}?cluster=devnet`}
+                                    href={`https://solana.fm/address/${collectionTraitA}`}
                                     target="_blank"
                                     rel="noreferrer"
                                 >
-                                    <img className="m-1 w-4" src={icon_solscan} alt="solscan" />
+                                    <img className="m-1 w-4" src={icon_solanafm} alt="solanafm" />
                                 </a>
                             </p>
                         </div>
@@ -365,11 +378,11 @@ export const Home: React.FC = () => {
                             <p className="m-auto text-xl flex">
                                 Trait B Collection
                                 <a
-                                    href={`https://solscan.io/token/${collectionTraitB}?cluster=devnet`}
+                                    href={`https://solana.fm/address/${collectionTraitB}`}
                                     target="_blank"
                                     rel="noreferrer"
                                 >
-                                    <img className="m-1 w-4" src={icon_solscan} alt="solscan" />
+                                    <img className="m-1 w-4" src={icon_solanafm} alt="solanafm" />
                                 </a>
                             </p>
                         </div>
@@ -384,11 +397,11 @@ export const Home: React.FC = () => {
                             <p className="m-auto text-xl flex">
                                 Trait C Collection
                                 <a
-                                    href={`https://solscan.io/token/${collectionTraitC}?cluster=devnet`}
+                                    href={`https://solana.fm/address/${collectionTraitC}`}
                                     target="_blank"
                                     rel="noreferrer"
                                 >
-                                    <img className="m-1 w-4" src={icon_solscan} alt="solscan" />
+                                    <img className="m-1 w-4" src={icon_solanafm} alt="solanafm" />
                                 </a>
                             </p>
                         </div>
@@ -435,11 +448,11 @@ export const Home: React.FC = () => {
                                     <p className="p-1 absolute top-1 left-1/2 -translate-x-1/2 flex">
                                         {assemblies[0].name}
                                         <a
-                                            href={`https://solscan.io/token/${assemblies[0].address}?cluster=devnet`}
+                                            href={`https://solana.fm/address/${assemblies[0].address}`}
                                             target="_blank"
                                             rel="noreferrer"
                                         >
-                                            <img className="m-1 w-4" src={icon_solscan} alt="solscan" />
+                                            <img className="m-1 w-4" src={icon_solanafm} alt="solanafm" />
                                         </a>
                                     </p>
                                 </div>

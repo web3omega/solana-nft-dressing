@@ -1,5 +1,5 @@
 import { Nft } from '@metaplex-foundation/js';
-import icon_solscan from '../img/icon/solscan.png';
+import icon_solanafm from '../img/icon/solanafm.png';
 
 export const Trait: React.FC<{ nft: Nft; onClick: any; apply: boolean }> = ({ nft, onClick, apply }) => {
     return (
@@ -7,8 +7,8 @@ export const Trait: React.FC<{ nft: Nft; onClick: any; apply: boolean }> = ({ nf
             <img className="w-48 h-48 m-auto" src={nft.json?.image} alt="trait" />
             <p className="p-1 absolute top-1 left-1/2 -translate-x-1/2 w-full flex justify-center">
                 {nft.name}
-                <a href={`https://solscan.io/token/${nft.address}?cluster=devnet`} target="_blank" rel="noreferrer">
-                    <img className="mx-2 my-1 w-4" src={icon_solscan} alt="solscan" />
+                <a href={`https://solana.fm/address/${nft.address}`} target="_blank" rel="noreferrer">
+                    <img className="mx-2 my-1 w-4" src={icon_solanafm} alt="solanafm" />
                 </a>
             </p>
             <button
